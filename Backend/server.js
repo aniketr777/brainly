@@ -19,9 +19,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(clerkMiddleware());
 const PORT = process.env.PORT || 5000;
 
-// app.get("/", (req, res) => {
-//   res.send("Hello World");
-// });
+app.get("/", (req, res) => {
+  res.send("Hello Server is working ");
+});
 // const collections = await qdrantClient.getCollections();
 // console.log(collections);
 
