@@ -14,11 +14,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { UploadCloud, Youtube, FileText, File, X, Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import axios from "axios";
 import { useAuth } from "@clerk/clerk-react";
 
-export default function UploadDialog({ fetchDocs }) {
+export default function UploadDialog({ onUploadComplete }) {
   const { getToken } = useAuth();
 
   const [activeTab, setActiveTab] = useState("youtube");
@@ -27,7 +26,7 @@ export default function UploadDialog({ fetchDocs }) {
 
   const [youtubeLink, setYoutubeLink] = useState("");
   const [file, setFile] = useState(null);
-  const [textTitle, setTextTitle] = useState(""); //  New state for text title
+  const [textTitle, setTextTitle] = useState("");
   const [textContent, setTextContent] = useState("");
   const fileInputRef = useRef(null);
 
@@ -37,8 +36,29 @@ export default function UploadDialog({ fetchDocs }) {
 
   const handleUpload = async () => {
     if (uploading) return;
-    const token = await getToken();
 
+    // --- Local validation before attempting upload ---
+    if (activeTab === "youtube" && !youtubeLink) {
+      onUploadComplete({
+        success: false,
+        error: "Please provide a YouTube link.",
+      });
+      return;
+    }
+    if (activeTab === "pdf" && !file) {
+      onUploadComplete({ success: false, error: "Please select a PDF file." });
+      return;
+    }
+    if (activeTab === "text" && !textTitle) {
+      onUploadComplete({ success: false, error: "Please provide a title." });
+      return;
+    }
+    if (activeTab === "text" && !textContent) {
+      onUploadComplete({ success: false, error: "Please provide some text." });
+      return;
+    }
+
+    const token = await getToken();
     let endpoint = "";
     let payload = null;
 
@@ -46,20 +66,16 @@ export default function UploadDialog({ fetchDocs }) {
       setUploading(true);
 
       if (activeTab === "youtube") {
-        if (!youtubeLink) return toast.error("Please provide a YouTube link.");
         endpoint = "/api/yt";
         payload = { link: youtubeLink };
       } else if (activeTab === "pdf") {
-        if (!file) return toast.error("Please select a PDF file.");
         endpoint = "/api/pdf";
         const formData = new FormData();
         formData.append("file", file);
         payload = formData;
       } else if (activeTab === "text") {
-        if (!textTitle) return toast.error("Please provide a title.");
-        if (!textContent) return toast.error("Please provide some text.");
         endpoint = "/api/text";
-        payload = { title: textTitle, text: textContent }; // ✅ Send title + text
+        payload = { title: textTitle, text: textContent };
       }
 
       await axios.post(endpoint, payload, {
@@ -70,19 +86,19 @@ export default function UploadDialog({ fetchDocs }) {
         },
       });
 
-      toast.success(
+      const successMessage =
         activeTab === "youtube"
-          ? "YouTube link uploaded "
+          ? "YouTube link uploaded successfully!"
           : activeTab === "pdf"
-          ? "PDF uploaded 📄"
-          : "Text uploaded ✨"
-      );
+          ? "PDF uploaded successfully! 📄"
+          : "Text uploaded successfully! ✨";
 
-      setOpenDialog(false);
+      // --- Report success to parent ---
+      onUploadComplete({ success: true, message: successMessage });
 
-      await fetchDocs();
-      
-      // Reset inputs
+      setOpenDialog(false); // Close dialog on success
+
+      // Reset local state
       setYoutubeLink("");
       setFile(null);
       setTextTitle("");
@@ -90,7 +106,9 @@ export default function UploadDialog({ fetchDocs }) {
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (err) {
       console.error("❌ Upload Error:", err);
-      toast.error(err.response?.data?.message || "Upload failed ❌");
+      const errorMessage = err.response?.data?.message || "Upload failed ❌";
+      // --- Report failure to parent ---
+      onUploadComplete({ success: false, error: errorMessage });
     } finally {
       setUploading(false);
     }

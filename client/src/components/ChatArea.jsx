@@ -19,9 +19,9 @@ function ChatArea({ messages, loading }) {
 
   return (
     <div
-      className="flex flex-col gap-3 p-4 w-full
-                 h-[calc(100vh-150px)] mx-auto
-                 overflow-y-auto bg-black
+      className="flex flex-col gap-3 p-4 w-[46%]
+                 h-[calc(100vh-130px)] fixed overflow-y-auto mx-auto
+                  bg-black
                  rounded-2xl shadow-inner no-scrollbar"
     >
       {messages.map((msg, idx) => (
@@ -65,7 +65,7 @@ function ChatArea({ messages, loading }) {
           Thinking...
         </div>
       )}
-      <div ref={bottomRef} /> {/* scroll target */}
+      {/* <div ref={bottomRef} /> scroll target */}
     </div>
   );
 }

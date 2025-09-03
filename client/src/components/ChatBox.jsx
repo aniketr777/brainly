@@ -1,10 +1,13 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
 
 // The component now accepts a function `onSendMessage` as a prop.
 function ChatBox({ onSendMessage }) {
   const [message, setMessage] = useState("");
+  const navigate = useNavigate();
   const textareaRef = useRef(null);
 
   useEffect(() => {
@@ -33,7 +36,7 @@ function ChatBox({ onSendMessage }) {
   // --- THE UI BELOW IS EXACTLY THE SAME AS YOUR ORIGINAL CODE ---
   // -----------------------------------------------------------
   return (
-    <div className="fixed bottom-0 left-0 w-full bg-black p-4">
+    <div className="fixed bottom-0   left-0 w-full bg-black p-4">
       <div
         className="mx-auto flex items-end rounded-3xl px-3 py-2 
                   bg-black border  shadow-xl 
@@ -44,7 +47,7 @@ function ChatBox({ onSendMessage }) {
           onClick={handleAddDocs}
           className="mr-2 flex items-center justify-center rounded-md p-2 text-white"
         >
-          <Plus className="text-md" />
+          <Plus onClick={() => navigate("/GetDocs")} className="text-md" />
         </button>
 
         {/* Textarea */}

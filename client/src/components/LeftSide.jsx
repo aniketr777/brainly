@@ -3,20 +3,16 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/clerk-react"; // Clerk auth
 import { File, Youtube, Type } from "lucide-react"; // Icons
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast"; 
 
 function LeftSide() {
-  // State for data, loading, and error
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Clerk auth
   const { getToken } = useAuth();
-
-  // Navigation
   const navigate = useNavigate();
 
-  // Fetch docs on mount
   useEffect(() => {
     const fetchDocs = async () => {
       try {
@@ -24,6 +20,7 @@ function LeftSide() {
         if (!token) {
           setError("Authentication failed. Please log in again.");
           setLoading(false);
+          toast.error("❌ Authentication failed. Please log in again."); // ✅ toast
           return;
         }
 
@@ -32,9 +29,11 @@ function LeftSide() {
         });
 
         setData(response.data);
+        toast.success("✅ Documents loaded successfully!"); // ✅ toast
       } catch (err) {
         console.error("Failed to fetch documents:", err);
         setError("Could not load documents.");
+        toast.error("❌ Could not load documents."); // ✅ toast
       } finally {
         setLoading(false);
       }
@@ -43,17 +42,15 @@ function LeftSide() {
     fetchDocs();
   }, [getToken]);
 
-  // Combine all docs
   const allDocs = [
     ...(data?.youtube || []),
     ...(data?.pdf || []),
     ...(data?.text || []),
   ];
 
-  // Skeleton loader
   if (loading) {
     return (
-      <div className="w-full md:w-72 lg:w-80 h-full p-4 bg-black border-r border-gray-800 space-y-2">
+      <div className="w-full md:w-72 lg:w-80 h-full fixed p-4 bg-black border-r border-gray-800 space-y-2">
         {[1, 2, 3].map((i) => (
           <div
             key={i}
@@ -64,7 +61,6 @@ function LeftSide() {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="w-full md:w-72 lg:w-80 h-full p-4 bg-black border-r border-gray-800 text-red-500">
@@ -94,7 +90,10 @@ function LeftSide() {
             <div
               key={doc._id}
               className="flex items-center gap-2 p-2 rounded-md bg-black hover:bg-gray-900 cursor-pointer"
-              onClick={() => navigate(`/docs/${doc._id}`)}
+              onClick={() => {
+                navigate(`/docs/${doc._id}`);
+                toast.info(`📂 Opened "${doc.metadata?.title || "Untitled"}"`); // ✅ toast
+              }}
             >
               {doc.type === "youtube" && (
                 <Youtube className="w-4 h-4 text-red-500" />

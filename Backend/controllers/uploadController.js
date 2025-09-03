@@ -12,11 +12,7 @@ import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 
 import toast from "react-hot-toast";
 import uploadPdf from "../lib/uploadPdf.js"
-/**
- * Checks if the main collection exists and creates it with necessary indexes if it doesn't.
- * This function is now set up to create indexes for both filtering fields.
- * @param {string} collectionName - The name of the collection to check/create.
- */
+
 const ensureCollectionExists = async (collectionName) => {
   try {
     const collections = await qdrantClient.getCollections();

@@ -45,7 +45,7 @@ function SimpleYoutubeCard({ title }) {
 function RightSide({ data, loading }) {
   const sources = data?.sources || [];
 
-  // 1. Create a Set of seen IDs and filter the sources array
+  
   const seenIds = new Set();
   const uniqueSources = sources.filter((source) => {
     // Use mongoId as the unique identifier
@@ -55,7 +55,7 @@ function RightSide({ data, loading }) {
   });
 
   return (
-    <div className="w-full flex flex-col p-4 space-y-4 h-auto overflow-y-auto no-scrollbar">
+    <div className="w-full flex flex-col p-4 space-y-4 h-full overflow-y-auto no-scrollbar">
       <h2 className="text-xl font-bold text-white mb-2">Sources</h2>
 
       {loading && <p className="text-gray-400">Loading sources...</p>}

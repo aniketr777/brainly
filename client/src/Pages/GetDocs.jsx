@@ -1,10 +1,9 @@
-
 import { useEffect, useState } from "react";
 import { useUser, useAuth } from "@clerk/clerk-react";
-import { useNavigate } from "react-router-dom"; 
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Loader2, MessageSquare, FileText, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 
 import UploadDialog from "../components/uploadDialog";
 import YoutubeCard from "../components/YoutubeCard";
@@ -23,10 +22,10 @@ function DocsGrid({ data, onDelete }) {
 
   const handleView = (doc) => {
     if (doc.type === "pdf") {
-      toast.info("Viewing for PDFs can be implemented here.");
+      // toast.info("Viewing for PDFs can be implemented here.");
       return;
     }
-    window.open(doc.link || doc.filepath, "_blank");
+    // window.open(doc.link || doc.filepath, "_blank");
   };
 
   if (!allDocs.length) {
@@ -64,9 +63,9 @@ function DocsGrid({ data, onDelete }) {
             return (
               <div
                 key={doc._id}
-                className="group relative bg-[#1c1c1c] p-4 rounded-lg flex flex-col justify-between h-[220px]"
+                className="group relative bg-[#1c1c1c] p-4  rounded-lg flex flex-col justify-between h-[220px]"
               >
-                <div className="flex flex-col items-center text-center">
+                <div className="flex flex-col mt-5 items-center text-center">
                   <FileText className="w-16 h-16 mx-auto text-gray-500 mb-2" />
                   <p
                     className="text-sm font-semibold truncate w-full text-gray-200"
@@ -98,7 +97,7 @@ function DocsGrid({ data, onDelete }) {
 function GetDocs() {
   const { user } = useUser();
   const { getToken } = useAuth();
-  const navigate = useNavigate(); // Hook is now correctly initialized
+  const navigate = useNavigate();
 
   const [data, setData] = useState({ youtube: [], pdf: [], text: [] });
   const [loading, setLoading] = useState(true);
@@ -118,6 +117,16 @@ function GetDocs() {
       toast.error(err.response?.data?.error || "Failed to fetch documents.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // --- NEW: Handler for upload completion ---
+  const handleUploadComplete = (result) => {
+    if (result.success) {
+      toast.success(result.message);
+      fetchDocs(); // Re-fetch documents on successful upload
+    } else {
+      toast.error(result.error);
     }
   };
 
@@ -179,22 +188,20 @@ function GetDocs() {
                   ? "bg-gray-700 text-gray-400 cursor-not-allowed"
                   : "bg-green-500 hover:bg-green-600 text-white"
               }`}
-              // 👇 FIX: The whole button now handles navigation
               onClick={() => {
                 if (allDocsCount > 0) {
                   navigate("/Chat");
                 }
               }}
             >
-              {/* 👇 FIX: No onClick needed here anymore */}
               <MessageSquare className="h-5 w-5 text-white" />
               Start Chat
             </RainbowButton>
           </div>
         </header>
 
-        {/* UPLOAD DIALOG */}
-        <UploadDialog onUploadSuccess={fetchDocs} />
+        {/* --- MODIFIED: Pass the new handler to the dialog --- */}
+        <UploadDialog onUploadComplete={handleUploadComplete} />
       </div>
 
       {/* DOCUMENT GRID */}

@@ -9,6 +9,7 @@ import chatRoutes from "./routes/chat.js";
 import GetDataRoutes from "./routes/data.js";
 import { clerkMiddleware } from "@clerk/express";
 import showRoutes from "./routes/show.js";
+import webSearchRoutes from "./routes/webSearch.js";
 dotenv.config();
 
 const app = express();
@@ -33,6 +34,8 @@ app.use("/api",deleteRoutes)
 app.use("/api", chatRoutes);
 app.use("/api", GetDataRoutes);
 // app.use("/api", showRoutes);
+app.use("/api", webSearchRoutes);
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

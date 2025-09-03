@@ -25,7 +25,7 @@ const ChatPage = () => {
 
     const newUserMessage = { role: "user", content: userMessage };
     setMessages((prev) => [...prev, newUserMessage]);
-    setCurrentSources([]); 
+    setCurrentSources([]);
     setLoading(true);
 
     try {
@@ -61,7 +61,7 @@ const ChatPage = () => {
   };
 
   return (
-    <div className="border-gray-700 bg-black h-screen w-full">
+    <div className="border-gray-700 fixed bg-black  w-full">
       <div className="flex flex-col text-white">
         {/* Main content */}
         <div className="flex flex-col lg:flex-row w-full  p-3 gap-3 flex-1">
@@ -74,7 +74,7 @@ const ChatPage = () => {
           </div>
 
           {/* Chat section */}
-          <div className="flex flex-col h-screen w-[50%]">
+          <div className="flex flex-col h-screen lg:w-[50%]">
             {/* Chat messages area */}
             <div className="flex-1 overflow-y-auto p-4">
               <ChatArea messages={messages} loading={loading} />
