@@ -24,7 +24,7 @@ const ensureCollectionExists = async (collectionName) => {
       console.log(`Collection "${collectionName}" not found. Creating...`);
       await qdrantClient.createCollection(collectionName, {
         vectors: {
-          size: 384, 
+          size: 768, 
           distance: "Cosine",
         },
       });

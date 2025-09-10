@@ -1,6 +1,3 @@
-
-
-
 import qdrantClient from "../lib/qdrantClient.js";
 import { embeddings } from "../services/embedding.js";
 import fetch from "node-fetch";
@@ -15,9 +12,7 @@ const GeminiChatbot = {
     try {
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
-        throw new Error(
-          " GEMINI_API_KEY is not set in environment variables."
-        );
+        throw new Error(" GEMINI_API_KEY is not set in environment variables.");
       }
 
       const apiUrl =
@@ -65,8 +60,6 @@ export const chatController = async (req, res) => {
     const { userId } = req.auth();
     const collectionName = "documents_collection";
 
-
-
     if (!originalQuery) {
       console.log(" No query provided in request body.");
       return res.status(400).json({ error: "Query is required" });
@@ -92,7 +85,7 @@ export const chatController = async (req, res) => {
       );
       // console.log(" Raw variations response:", variationsResponse);
 
-      // removing the markdown/ json if the content is wrapped in it 
+      // removing the markdown/ json if the content is wrapped in it
       const cleanedResponse = variationsResponse
         .replace(/```json/g, "")
         .replace(/```/g, "")
@@ -107,7 +100,7 @@ export const chatController = async (req, res) => {
         error.message
       );
     }
-    // putting all the queries in set to remove duplicate 
+    // putting all the queries in set to remove duplicate
     queries = [...new Set(queries)];
     console.log(" Final queries to search with:", queries);
 
@@ -127,14 +120,12 @@ export const chatController = async (req, res) => {
     const searchRequests = queryVectors.map((vector, idx) => ({
       vector,
       limit: 3,
-      with_payload: true, //  to get the text chunk and other metdata 
+      with_payload: true, //  to get the text chunk and other metdata
       filter: {
         must: [{ key: "userId", match: { value: userId } }],
-      }
-      ,
-      score_threshold:0.2
+      },
+      score_threshold: 0.2,
     }));
-    
 
     const batchSearchResults = await qdrantClient.searchBatch(collectionName, {
       searches: searchRequests,
@@ -148,7 +139,7 @@ export const chatController = async (req, res) => {
     // --- 4. De-duplicate and combine results ---
     console.log("\n Deduplicating results...");
     const uniqueResults = new Map();
-    // .flat ->  to return the text in a single array 
+    // .flat ->  to return the text in a single array
     batchSearchResults.flat().forEach((hit) => {
       if (hit && hit.id && !uniqueResults.has(hit.id)) {
         uniqueResults.set(hit.id, hit);
@@ -204,4 +195,3 @@ export const chatController = async (req, res) => {
   }
   console.log("================= CHAT CONTROLLER END =================\n");
 };
-

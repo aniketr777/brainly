@@ -1,6 +1,6 @@
-import React from "react";
-import { FileText, Type, Youtube } from "lucide-react"; // Added Youtube icon
-
+// import React,{useState} from "react";
+import { FileText, ImageOff, Type, Youtube } from "lucide-react"; // Added Youtube icon
+import GoogleSearch from "@/components/GoogleSearch";
 // --- Reusable Card Components (with styling) ---
 
 function PdfCard({ filename }) {
@@ -42,10 +42,9 @@ function SimpleYoutubeCard({ title }) {
 
 // --- Main RightSide Component ---
 
-function RightSide({ data, loading }) {
-  const sources = data?.sources || [];
+function RightSide({ data, loading,query}) {
 
-  
+  const sources = data?.sources || [];
   const seenIds = new Set();
   const uniqueSources = sources.filter((source) => {
     // Use mongoId as the unique identifier
@@ -53,10 +52,16 @@ function RightSide({ data, loading }) {
     seenIds.add(source.mongoId);
     return !duplicate;
   });
-
+  // const [webSearch, setWebSearch] = useState(false);
+  // const ToggleWebSearch =()=>{
+  //   setWebSearch(!webSearch);
+  // }
   return (
     <div className="w-full flex flex-col p-4 space-y-4 h-full overflow-y-auto no-scrollbar">
-      <h2 className="text-xl font-bold text-white mb-2">Sources</h2>
+      <h2 className="text-xl flex justify-between font-bold text-white mb-2">
+        <h3>Sources</h3>
+        {/* <button onClick={ToggleWebSearch} className="bg-white text-black font-thin text-sm rounded-md p-1">websearch</button> */}
+      </h2>
 
       {loading && <p className="text-gray-400">Loading sources...</p>}
 
@@ -83,6 +88,10 @@ function RightSide({ data, loading }) {
             return null;
           }
         })}
+
+      <div className="w-full">
+        {/* {webSearch && <GoogleSearch query={query} />} */}
+      </div>
     </div>
   );
 }

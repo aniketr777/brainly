@@ -32,9 +32,7 @@ function ChatBox({ onSendMessage }) {
     console.log("Add documents clicked");
   };
 
-  // -----------------------------------------------------------
-  // --- THE UI BELOW IS EXACTLY THE SAME AS YOUR ORIGINAL CODE ---
-  // -----------------------------------------------------------
+
   return (
     <div className="fixed bottom-0   left-0 w-full bg-black p-4">
       <div

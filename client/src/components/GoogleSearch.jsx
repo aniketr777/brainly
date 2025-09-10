@@ -55,8 +55,9 @@ function GoogleSearch({ query }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
+  
   useEffect(() => {
+    console.log("query",query)
     const fetchData = async () => {
       setLoading(true);
       try {

@@ -16,6 +16,7 @@ const ChatPage = () => {
 
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState("");
 
   // 1. New state to hold the sources for the right sidebar
   const [currentSources, setCurrentSources] = useState([]);
@@ -24,6 +25,7 @@ const ChatPage = () => {
     if (!userMessage.trim()) return;
 
     const newUserMessage = { role: "user", content: userMessage };
+    setQuery(userMessage);
     setMessages((prev) => [...prev, newUserMessage]);
     setCurrentSources([]);
     setLoading(true);
@@ -77,7 +79,7 @@ const ChatPage = () => {
           <div className="flex flex-col h-screen lg:w-[50%]">
             {/* Chat messages area */}
             <div className="flex-1 overflow-y-auto p-4">
-              <ChatArea messages={messages} loading={loading} />
+              <ChatArea messages={messages} loading={loading}  />
             </div>
 
             {/* Chat input box (fixed at bottom) */}
@@ -97,8 +99,7 @@ const ChatPage = () => {
               ) : null}
             </div>
 
-            {/* 3. Pass the current sources and loading state to the RightSide component */}
-            <RightSide data={{ sources: currentSources }} loading={loading} />
+            <RightSide data={{ sources: currentSources }} loading={loading} query={query} />
           </div>
         </div>
       </div>
