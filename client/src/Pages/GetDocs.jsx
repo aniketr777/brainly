@@ -2,7 +2,13 @@ import { useEffect, useState } from "react";
 import { useUser, useAuth } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Loader2, MessageSquare, FileText, Trash2 } from "lucide-react";
+import {
+  Loader2,
+  MessageSquare,
+  FileText,
+  Trash2,
+  ShieldAlert,
+} from "lucide-react";
 import { toast } from "react-hot-toast";
 
 import UploadDialog from "../components/uploadDialog";
@@ -23,6 +29,9 @@ function DocsGrid({ data, onDelete }) {
   const handleView = (doc) => {
     if (doc.type === "pdf") {
       // toast.info("Viewing for PDFs can be implemented here.");
+
+
+      
       return;
     }
     // window.open(doc.link || doc.filepath, "_blank");
@@ -63,7 +72,7 @@ function DocsGrid({ data, onDelete }) {
             return (
               <div
                 key={doc._id}
-                className="group relative bg-[#1c1c1c] p-4  rounded-lg flex flex-col justify-between h-[220px]"
+                className="group relative bg-[#1c1c1c] p-4 rounded-lg flex flex-col justify-between h-[220px]"
               >
                 <div className="flex flex-col mt-5 items-center text-center">
                   <FileText className="w-16 h-16 mx-auto text-gray-500 mb-2" />
@@ -101,6 +110,7 @@ function GetDocs() {
 
   const [data, setData] = useState({ youtube: [], pdf: [], text: [] });
   const [loading, setLoading] = useState(true);
+  const [plan, setPlan] = useState("free"); 
 
   // Fetch documents function
   const fetchDocs = async () => {
@@ -111,7 +121,11 @@ function GetDocs() {
       const response = await axios.get("/api/getData", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setData(response.data || { youtube: [], pdf: [], text: [] });
+      // Destructure data and plan from the response
+      const { plan: userPlan, ...docsData } = response.data;
+      setData(docsData || { youtube: [], pdf: [], text: [] });
+      setPlan(userPlan || "free");
+      console.log("plan:", userPlan);
     } catch (err) {
       console.error("❌ Error fetching docs:", err);
       toast.error(err.response?.data?.error || "Failed to fetch documents.");
@@ -120,7 +134,7 @@ function GetDocs() {
     }
   };
 
-  // --- NEW: Handler for upload completion ---
+  // Handler for upload completion
   const handleUploadComplete = (result) => {
     if (result.success) {
       toast.success(result.message);
@@ -159,6 +173,14 @@ function GetDocs() {
     fetchDocs();
   }, [user]);
 
+  const allDocsCount =
+    (data.youtube?.length || 0) +
+    (data.pdf?.length || 0) +
+    (data.text?.length || 0);
+
+  // Determine if the upload limit has been reached for free users
+  const isLimitReached = plan === "free" && allDocsCount >= 3;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-black">
@@ -166,11 +188,6 @@ function GetDocs() {
       </div>
     );
   }
-
-  const allDocsCount =
-    (data.youtube?.length || 0) +
-    (data.pdf?.length || 0) +
-    (data.text?.length || 0);
 
   return (
     <div className="h-screen w-full bg-black text-white flex flex-col font-sans">
@@ -200,8 +217,28 @@ function GetDocs() {
           </div>
         </header>
 
-        {/* --- MODIFIED: Pass the new handler to the dialog --- */}
-        <UploadDialog onUploadComplete={handleUploadComplete} />
+        {/* Display a warning when the limit is reached */}
+        {isLimitReached && (
+          <div className="flex items-center gap-3 text-center p-3 mb-4 bg-yellow-900/50 text-yellow-200 border border-yellow-700 rounded-lg">
+            <ShieldAlert className="h-5 w-5 flex-shrink-0" />
+            <p className="text-sm">
+              You've reached your 3-document limit. Please{" "}
+              <a
+                href="/pricing"
+                className="font-bold underline hover:text-white"
+              >
+                upgrade your plan
+              </a>{" "}
+              to upload more.
+            </p>
+          </div>
+        )}
+
+        {/* Pass a 'disabled' prop to the dialog */}
+        <UploadDialog
+          onUploadComplete={handleUploadComplete}
+          disabled={isLimitReached}
+        />
       </div>
 
       {/* DOCUMENT GRID */}

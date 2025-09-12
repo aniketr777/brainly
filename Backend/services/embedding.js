@@ -1,25 +1,10 @@
-import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
+import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-let embeddings;
-
-try {
-  // 1. Check for the new environment variable
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error("❌ Missing GOOGLE_API_KEY in environment variables.");
-  }
-
-  // 2. Instantiate the new Google embeddings class
-  embeddings = new GoogleGenerativeAIEmbeddings({
-    apiKey: process.env.GEMINI_API_KEY,
-    model: "embedding-001",
-  });
-
-  console.log("✅ Google Embeddings initialized successfully!");
-} catch (error) {
-  console.error("⚠️ Error initializing embeddings:", error.message);
-}
-
-export { embeddings };
+export const embeddings = new HuggingFaceInferenceEmbeddings({
+  apiKey: process.env.HUGGING_FACE_HUB_TOKEN,
+  model: "sentence-transformers/all-MiniLM-L6-v2",
+  provider: "hf-inference",
+});

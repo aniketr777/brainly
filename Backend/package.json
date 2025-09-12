@@ -31,6 +31,7 @@
     "mongoose": "^8.18.0",
     "multer": "^2.0.2",
     "node-fetch": "^3.3.2",
+    "openai": "^5.20.0",
     "pdf-parse": "^1.1.1",
     "qdrant-client": "^0.0.1",
     "react-hot-toast": "^2.6.0",

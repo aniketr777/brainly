@@ -38,7 +38,9 @@ function YoutubeCard({ metadata, link, onDelete, onView }) {
               onClick={onView}
               className="bg-black text-white p-3 rounded-full shadow hover:scale-110 transition"
             >
-              <Eye size={20} />
+              <Eye onClick={()=>{
+                window.open(link, "_blank");
+              }} size={20} />
             </button>
           </div>
         </div>
