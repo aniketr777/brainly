@@ -366,10 +366,12 @@ export const youtubeUpload = async (req, res) => {
     if (!planCheck.allowed)
       return res.status(403).json({ error: planCheck.message });
 
-    const collectionName = "documents_collection";
+    const collectionName = "store";
 
     // 2. Fetch transcript
-    const response = await fetch("http://127.0.0.1:8000/get-transcript", {
+    const fastapi = process.env.FASTAPI_URL;
+
+    const response = await fetch(`${fastapi}/get-transcript`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ link, lang: "en" }),
@@ -477,8 +479,8 @@ export const pdfUpload = async (req, res) => {
     const fullText = docs.map((d) => d.pageContent).join("\n");
 
     const textSplitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 1000,
-      chunkOverlap: 100,
+      chunkSize: 500,
+      chunkOverlap: 50,
     });
     const texts = await textSplitter.splitText(fullText);
 
