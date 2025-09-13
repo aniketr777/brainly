@@ -119,7 +119,7 @@ export const chatController = async (req, res) => {
 
     const searchRequests = queryVectors.map((vector, idx) => ({
       vector,
-      limit: 3,
+      limit: 5,
       with_payload: true, //  to get the text chunk and other metdata
       filter: {
         must: [{ key: "userId", match: { value: userId } }],
