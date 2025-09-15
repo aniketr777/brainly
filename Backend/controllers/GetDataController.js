@@ -1,27 +1,31 @@
 import Youtube from "../model/youtube-collection.js";
 import Pdf from "../model/pdf-collection.js";
 import Text from "../model/text-collection.js";
+import Web from "../model/web-collection.js";
 
 export const GetDataController = async (req, res) => {
   try {
-    // CORRECTED: Use req.auth() as a function per the warning.
     const { userId } = req.auth();
 
     const promises = [
       Youtube.find({ user_id: userId }).lean(),
       Pdf.find({ user_id: userId }).lean(),
       Text.find({ user_id: userId }).lean(),
+      Web.find({ user_id: userId }).lean(),
     ];
 
-    const [youtubeDocs, pdfDocs, textDocs] = await Promise.all(promises);
+    const [youtubeDocs, pdfDocs, textDocs, webDocs] = await Promise.all(
+      promises
+    );
 
     const allData = {
-      plan: req.plan, // This comes from your 'auth' middleware
+      plan: req.plan,
       youtube: youtubeDocs,
       pdf: pdfDocs,
       text: textDocs,
+      web: webDocs,
     };
-console.log(req.plan);
+
     res.json(allData);
   } catch (err) {
     console.error("❌ GetDataController error:", err);

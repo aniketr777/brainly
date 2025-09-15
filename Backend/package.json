@@ -26,6 +26,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "duckduckgo-search-api": "^1.0.5",
+    "exa-js": "^1.9.3",
     "express": "^5.1.0",
     "langchain": "^0.3.31",
     "mongoose": "^8.18.0",

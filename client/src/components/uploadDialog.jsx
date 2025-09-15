@@ -13,7 +13,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { UploadCloud, Youtube, FileText, File, X, Loader2 } from "lucide-react";
+import {
+  UploadCloud,
+  Youtube,
+  FileText,
+  File,
+  X,
+  Loader2,
+  Globe,
+} from "lucide-react";
 import axios from "axios";
 import { useAuth } from "@clerk/clerk-react";
 
@@ -25,6 +33,7 @@ export default function UploadDialog({ onUploadComplete }) {
   const [uploading, setUploading] = useState(false);
 
   const [youtubeLink, setYoutubeLink] = useState("");
+  const [websiteLink, setWebsiteLink] = useState("");
   const [file, setFile] = useState(null);
   const [textTitle, setTextTitle] = useState("");
   const [textContent, setTextContent] = useState("");
@@ -37,11 +46,24 @@ export default function UploadDialog({ onUploadComplete }) {
   const handleUpload = async () => {
     if (uploading) return;
 
-    // --- Local validation before attempting upload ---
+    // --- Local validation ---
     if (activeTab === "youtube" && !youtubeLink) {
       onUploadComplete({
         success: false,
         error: "Please provide a YouTube link.",
+      });
+      return;
+    }
+    if (
+      activeTab === "website" &&
+      (!websiteLink || !/^https?:\/\/\S+$/i.test(websiteLink))
+    ) {
+
+
+
+      onUploadComplete({
+        success: false,
+        error: "Please provide a valid website URL (starting with http/https).",
       });
       return;
     }
@@ -68,6 +90,9 @@ export default function UploadDialog({ onUploadComplete }) {
       if (activeTab === "youtube") {
         endpoint = "/api/yt";
         payload = { link: youtubeLink };
+      } else if (activeTab === "website") {
+        endpoint = "/api/web";
+        payload = { url: websiteLink }; 
       } else if (activeTab === "pdf") {
         endpoint = "/api/pdf";
         const formData = new FormData();
@@ -88,18 +113,20 @@ export default function UploadDialog({ onUploadComplete }) {
 
       const successMessage =
         activeTab === "youtube"
-          ? "YouTube link uploaded successfully!"
+          ? "YouTube link uploaded successfully! 🎥"
+          : activeTab === "website"
+          ? "Website link uploaded successfully! 🌐"
           : activeTab === "pdf"
           ? "PDF uploaded successfully! 📄"
           : "Text uploaded successfully! ✨";
 
-      // --- Report success to parent ---
       onUploadComplete({ success: true, message: successMessage });
 
-      setOpenDialog(false); // Close dialog on success
+      setOpenDialog(false);
 
       // Reset local state
       setYoutubeLink("");
+      setWebsiteLink("");
       setFile(null);
       setTextTitle("");
       setTextContent("");
@@ -107,7 +134,6 @@ export default function UploadDialog({ onUploadComplete }) {
     } catch (err) {
       console.error("❌ Upload Error:", err);
       const errorMessage = err.response?.data?.message || "Upload failed ❌";
-      // --- Report failure to parent ---
       onUploadComplete({ success: false, error: errorMessage });
     } finally {
       setUploading(false);
@@ -132,7 +158,7 @@ export default function UploadDialog({ onUploadComplete }) {
             Choose Your Content Type
           </DialogTitle>
           <DialogDescription className="text-gray-400">
-            Upload a PDF, paste a YouTube link, or write plain text.
+            Upload a PDF, paste a YouTube link, a Website, or write plain text.
           </DialogDescription>
         </DialogHeader>
 
@@ -141,10 +167,14 @@ export default function UploadDialog({ onUploadComplete }) {
           onValueChange={setActiveTab}
           className="w-full"
         >
-          <TabsList className="grid w-full grid-cols-3 bg-[rgb(48,48,48)] border-gray-800">
+          <TabsList className="grid w-full grid-cols-4 bg-[rgb(48,48,48)] border-gray-800">
             <TabsTrigger value="youtube">
               <Youtube className="w-4 h-4 mr-2" />
               YouTube
+            </TabsTrigger>
+            <TabsTrigger value="website">
+              <Globe className="w-4 h-4 mr-2" />
+              Website
             </TabsTrigger>
             <TabsTrigger value="pdf">
               <File className="w-4 h-4 mr-2" />
@@ -156,7 +186,7 @@ export default function UploadDialog({ onUploadComplete }) {
             </TabsTrigger>
           </TabsList>
 
-          {/* YouTube Upload */}
+          {/* YouTube */}
           <TabsContent value="youtube" className="py-4">
             <Label htmlFor="youtube-link">YouTube Video Link</Label>
             <Input
@@ -168,7 +198,19 @@ export default function UploadDialog({ onUploadComplete }) {
             />
           </TabsContent>
 
-          {/* PDF Upload */}
+          {/* Website */}
+          <TabsContent value="website" className="py-4">
+            <Label htmlFor="website-link">Website URL</Label>
+            <Input
+              id="website-link"
+              placeholder="https://example.com"
+              value={websiteLink}
+              onChange={(e) => setWebsiteLink(e.target.value)}
+              className="bg-[rgb(48,48,48)] border-gray-700"
+            />
+          </TabsContent>
+
+          {/* PDF */}
           <TabsContent value="pdf" className="py-4">
             <div
               className="relative flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-700 rounded-lg cursor-pointer bg-[rgb(48,48,48)] hover:bg-[rgb(60,60,60)] transition-colors"
@@ -217,7 +259,7 @@ export default function UploadDialog({ onUploadComplete }) {
             </div>
           </TabsContent>
 
-          {/* Text Upload */}
+          {/* Text */}
           <TabsContent value="text" className="py-4 space-y-4">
             <div>
               <Label htmlFor="text-title">Title</Label>
@@ -229,7 +271,6 @@ export default function UploadDialog({ onUploadComplete }) {
                 className="bg-[rgb(48,48,48)] border-gray-700"
               />
             </div>
-
             <div>
               <Label htmlFor="text-content">Paste Your Text</Label>
               <Textarea

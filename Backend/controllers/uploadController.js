@@ -1,276 +1,4 @@
-// import fetch from "node-fetch";
-// import { randomUUID } from "crypto";
-// import { embeddings } from "../services/embedding.js";
-// import qdrantClient from "../lib/qdrantClient.js";
-// import { WebPDFLoader } from "@langchain/community/document_loaders/web/pdf";
-
-// import Youtube from "../model/youtube-collection.js";
-// import Pdf from "../model/pdf-collection.js";
-// import Text from "../model/text-collection.js";
-// import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
-
-// import toast from "react-hot-toast";
-// import uploadPdf from "../lib/uploadPdf.js";
-// import { clerkClient } from "@clerk/express";
-
-// // Check user plan
-// const checkUserPlan = async (userId, plan, free_usage) => {
-//   if (plan !== "premium" && free_usage >= 3) {
-//     // limit changed to 3
-//     return {
-//       allowed: false,
-//       message: "Free limit reached. Upgrade to continue.",
-//     };
-//   }
-//   return { allowed: true };
-// };
-
-// // Increment usage after upload
-// const incrementUsage = async (userId, plan, free_usage) => {
-//   if (plan !== "premium") {
-//     await clerkClient.users.updateUser(userId, {
-//       privateMetadata: { free_usage: (free_usage || 0) + 1 }, // default 0 if undefined
-//     });
-//   }
-// };
-
-// const ensureCollectionExists = async (collectionName) => {
-//   try {
-//     const collections = await qdrantClient.getCollections();
-//     const collectionExists = collections.collections.some(
-//       (collection) => collection.name === collectionName
-//     );
-
-//     if (!collectionExists) {
-//       console.log(`Collection "${collectionName}" not found. Creating...`);
-//       await qdrantClient.createCollection(collectionName, {
-//         vectors: {
-//           size: 384,
-//           distance: "Cosine",
-//         },
-//       });
-//       console.log(` Collection "${collectionName}" created.`);
-
-//       await qdrantClient.createPayloadIndex(collectionName, {
-//         field_name: "mongoId",
-//         field_schema: "keyword",
-//         wait: true,
-//       });
-//       await qdrantClient.createPayloadIndex(collectionName, {
-//         field_name: "userId",
-//         field_schema: "keyword",
-//         wait: true,
-//       });
-//       console.log(` Payload index for "userId" created.`);
-//     }
-//   } catch (err) {
-//     console.error(
-//       ` Error in ensureCollectionExists for "${collectionName}":`,
-//       err
-//     );
-//     throw err;
-//   }
-// };
-
-// export const youtubeUpload = async (req, res) => {
-//   try {
-//     const { link } = req.body;
-//     const { userId } = req.auth();
-//     const { plan, free_usage } = req;
-
-//     // Plan check
-//     const planCheck = await checkUserPlan(userId, plan, free_usage);
-//     if (!planCheck.allowed)
-//       return res.status(403).json({ error: planCheck.message });
-
-//     const collectionName = "documents_collection";
-
-//     const response = await fetch("http://127.0.0.1:8000/get-transcript", {
-//       method: "POST",
-//       headers: { "Content-Type": "application/json" },
-//       body: JSON.stringify({ link, lang: "en" }),
-//     });
-//     if (!response.ok) throw new Error("Failed to fetch transcript");
-
-//     const data = await response.json();
-//     const textSplitter = new RecursiveCharacterTextSplitter({
-//       chunkSize: 1000,
-//       chunkOverlap: 100,
-//     });
-//     const texts = await textSplitter.splitText(data.transcript);
-
-//     const result = await Youtube.create({
-//       metadata: data.metadata,
-//       created_at: new Date(),
-//       link,
-//       user_id: userId,
-//       chunk: texts.length,
-//       type: "youtube",
-//     });
-//     const mongo_id = result._id.toString();
-//     res.json({ mongo_id });
-
-//     const vectors = await embeddings.embedDocuments(texts);
-//     await ensureCollectionExists(collectionName);
-//     await qdrantClient.upsert(collectionName, {
-//       points: vectors.map((vector, i) => ({
-//         id: randomUUID(),
-//         vector,
-//         payload: {
-//           text: texts[i],
-//           userId,
-//           link,
-//           mongoId: mongo_id,
-//           ...data.metadata,
-//         },
-//       })),
-//     });
-//     console.log(" YouTube data stored in Mongo + Qdrant");
-
-//     // Increment usage after successful upload
-//     await incrementUsage(userId, plan, free_usage);
-//   } catch (err) {
-//     console.error(" youtubeUpload error:", err);
-//     if (!res.headersSent)
-//       res.status(500).json({ error: "Something went wrong" });
-//   }
-// };
-
-// export const pdfUpload = async (req, res) => {
-//   const fileBuffer = req.file?.buffer;
-
-//   try {
-//     const { userId } = req.auth();
-//     const { plan, free_usage } = req;
-
-//     // Plan check
-//     const planCheck = await checkUserPlan(userId, plan, free_usage);
-//     if (!planCheck.allowed)
-//       return res.status(403).json({ error: planCheck.message });
-
-//     if (!req.file || !fileBuffer) {
-//       return res.status(400).json({ error: "No file uploaded" });
-//     }
-
-//     const { originalname, size } = req.file;
-//     const collectionName = "documents_collection";
-
-//     if (size > 5 * 1024 * 1024) {
-//       return res.status(400).json({ error: "File size exceeds 5 MB limit" });
-//     }
-
-//     const cloudinary = await uploadPdf(fileBuffer, originalname);
-
-//     const pdfBlob = new Blob([fileBuffer], { type: "application/pdf" });
-//     const loader = new WebPDFLoader(pdfBlob, { splitPages: false });
-//     const docs = await loader.load();
-//     const fullText = docs.map((d) => d.pageContent).join("\n");
-
-//     const textSplitter = new RecursiveCharacterTextSplitter({
-//       chunkSize: 1000,
-//       chunkOverlap: 100,
-//     });
-//     const texts = await textSplitter.splitText(fullText);
-
-//     const metadata = {
-//       filename: originalname,
-//       size,
-//       uploadedAt: new Date(),
-//       type: "pdf",
-//     };
-
-//     const result = await Pdf.create({
-//       metadata,
-//       filepath: cloudinary.secure_url,
-//       user_id: userId,
-//       chunk: texts.length,
-//       public_id: cloudinary.public_id,
-//     });
-//     const mongo_id = result._id.toString();
-
-//     const vectors = await embeddings.embedDocuments(texts);
-//     await ensureCollectionExists(collectionName);
-//     await qdrantClient.upsert(collectionName, {
-//       points: vectors.map((vector, i) => ({
-//         id: randomUUID(),
-//         vector,
-//         payload: { text: texts[i], userId, mongoId: mongo_id, ...metadata },
-//       })),
-//     });
-
-//     console.log("✅ PDF data stored in Mongo + Qdrant");
-
-//     // Increment usage after successful upload
-//     await incrementUsage(userId, plan, free_usage);
-
-//     res.status(200).json({
-//       message: "PDF uploaded and processed successfully",
-//       mongo_id: mongo_id,
-//     });
-//   } catch (err) {
-//     console.error("❌ pdfUpload controller error:", err);
-//     if (!res.headersSent) {
-//       res.status(500).json({ error: "An internal server error occurred." });
-//     }
-//   }
-// };
-
-// export const textUpload = async (req, res) => {
-//   try {
-//     const { title, text } = req.body;
-//     const { userId } = req.auth();
-//     const { plan, free_usage } = req;
-
-//     // Plan check
-//     const planCheck = await checkUserPlan(userId, plan, free_usage);
-//     if (!planCheck.allowed)
-//       return res.status(403).json({ error: planCheck.message });
-
-//     const collectionName = "documents_collection";
-
-//     const metadata = {
-//       title: title || "Untitled",
-//       size: text.length,
-//       uploadedAt: new Date(),
-//       type: "text",
-//     };
-//     const textSplitter = new RecursiveCharacterTextSplitter({
-//       chunkSize: 1000,
-//       chunkOverlap: 100,
-//     });
-//     const texts = await textSplitter.splitText(text);
-
-//     const result = await Text.create({
-//       metadata,
-//       user_id: userId,
-//       text,
-//       chunk: texts.length,
-//       type: "text",
-//     });
-//     const mongo_id = result._id.toString();
-//     res.json({ mongo_id });
-
-//     const vectors = await embeddings.embedDocuments(texts);
-//     await ensureCollectionExists(collectionName);
-//     await qdrantClient.upsert(collectionName, {
-//       points: vectors.map((vector, i) => ({
-//         id: randomUUID(),
-//         vector,
-//         payload: { text: texts[i], userId, mongoId: mongo_id, ...metadata },
-//       })),
-//     });
-//     toast.success("Text uploaded successfully");
-//     console.log(" Text data stored in Mongo + Qdrant");
-
-//     // Increment usage after successful upload
-//     await incrementUsage(userId, plan, free_usage);
-//   } catch (err) {
-//     toast.error("Text upload failed");
-//     console.error(" textUpload error:", err);
-//     if (!res.headersSent)
-//       res.status(500).json({ error: "Something went wrong" });
-//   }
-// };
+import Exa from "exa-js";
 import fetch from "node-fetch";
 import { randomUUID } from "crypto";
 import { embeddings } from "../services/embedding.js";
@@ -279,16 +7,15 @@ import { WebPDFLoader } from "@langchain/community/document_loaders/web/pdf";
 
 import Youtube from "../model/youtube-collection.js";
 import Pdf from "../model/pdf-collection.js";
+import Web from "../model/web-collection.js";
+
 import Text from "../model/text-collection.js";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 
 import uploadPdf from "../lib/uploadPdf.js";
-// NOTE: You would need a function to delete from Cloudinary.
-// It would look something like this and use the cloudinary admin API.
-// import { deleteFromCloudinary } from "../lib/cloudinaryHelper.js";
 import { clerkClient } from "@clerk/express";
 
-// --- Helper Functions ---
+
 
 // Check user plan
 const checkUserPlan = async (userId, plan, free_usage) => {
@@ -368,10 +95,9 @@ export const youtubeUpload = async (req, res) => {
 
     const collectionName = "store";
 
-    // 2. Fetch transcript
-    const fastapi = process.env.FASTAPI_URL;
+    
 
-    const response = await fetch(`${fastapi}/get-transcript`, {
+    const response = await fetch(`http://127.0.0.1:8000/get-transcript`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ link, lang: "en" }),
@@ -448,7 +174,7 @@ export const pdfUpload = async (req, res) => {
   const fileBuffer = req.file?.buffer;
   let mongo_id = null;
   let cloudinary_public_id = null;
-  const collectionName = "documents_collection";
+  const collectionName = "store";
 
   try {
     const { userId } = req.auth();
@@ -547,7 +273,7 @@ export const pdfUpload = async (req, res) => {
 
 export const textUpload = async (req, res) => {
   let mongo_id = null;
-  const collectionName = "documents_collection";
+  const collectionName = "store";
 
   try {
     const { title, text } = req.body;
@@ -620,5 +346,102 @@ export const textUpload = async (req, res) => {
       res
         .status(500)
         .json({ error: "Something went wrong during text processing" });
+  }
+};
+
+export const webUpload = async (req, res) => {
+  let mongo_id = null;
+  const collectionName = "store";
+
+  try {
+    const { url } = req.body;
+    const { userId } = req.auth();
+    const { plan, free_usage } = req;
+
+    // Check plan
+    if (plan !== "premium" && free_usage >= 3) {
+      return res
+        .status(403)
+        .json({ error: "Free limit reached. Upgrade to continue." });
+    }
+
+    // Fetch web content from Exa
+    const exa = new Exa(process.env.EXA_API_KEY);
+    const result = await exa.getContents([url], {
+      text: true,
+      context: true,
+      subpages: 1,
+      livecrawl: "fallback",
+    });
+
+    const page = result?.results?.[0];
+    if (!page?.text) {
+      return res
+        .status(400)
+        .json({ error: "No content fetched from the given URL" });
+    }
+
+    const fullText = page.text;
+    const metadata = {
+      title: page.title || "Untitled Webpage",
+      url: page.url || url,
+      publishedDate: page.publishedDate || null,
+      author: page.author || "",
+      type: "web",
+    };
+
+    // Split text into chunks
+    const textSplitter = new RecursiveCharacterTextSplitter({
+      chunkSize: 1000,
+      chunkOverlap: 100,
+    });
+    const texts = await textSplitter.splitText(fullText);
+
+    // Save entry in Mongo
+    const doc = await Web.create({
+      user_id: userId,
+      url,
+      chunk: texts.length,
+      metadata,
+      type: "web",
+      image: result.results[0].image,
+      title:result.results[0].title
+    });
+    mongo_id = doc._id.toString();
+
+    // Create embeddings + upsert to Qdrant
+    const vectors = await embeddings.embedDocuments(texts);
+    await ensureCollectionExists(collectionName);
+    await qdrantClient.upsert(collectionName, {
+      points: vectors.map((vector, i) => ({
+        id: randomUUID(),
+        vector,
+        payload: { text: texts[i], userId, mongoId: mongo_id, ...metadata },
+      })),
+    });
+
+    // Increment free usage if needed
+    if (plan !== "premium") {
+      await clerkClient.users.updateUser(userId, {
+        privateMetadata: { free_usage: (free_usage || 0) + 1 },
+      });
+    }
+
+    res.status(200).json({ mongo_id });
+  } catch (err) {
+    console.error("--- webUpload error, initiating rollback ---", err);
+
+    if (mongo_id) {
+      await Web.findByIdAndDelete(mongo_id);
+      await qdrantClient.delete(collectionName, {
+        filter: { must: [{ key: "mongoId", match: { value: mongo_id } }] },
+      });
+    }
+
+    if (!res.headersSent) {
+      res
+        .status(500)
+        .json({ error: "Something went wrong during web processing" });
+    }
   }
 };

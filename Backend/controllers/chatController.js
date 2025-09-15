@@ -58,7 +58,7 @@ export const chatController = async (req, res) => {
   try {
     const { query: originalQuery } = req.body;
     const { userId } = req.auth();
-    const collectionName = "documents_collection";
+    const collectionName = "store";
 
     if (!originalQuery) {
       console.log(" No query provided in request body.");
@@ -119,12 +119,12 @@ export const chatController = async (req, res) => {
 
     const searchRequests = queryVectors.map((vector, idx) => ({
       vector,
-      limit: 5,
+      limit: 4,
       with_payload: true, //  to get the text chunk and other metdata
       filter: {
         must: [{ key: "userId", match: { value: userId } }],
       },
-      score_threshold: 0.2,
+      score_threshold: 0.3,
     }));
 
     const batchSearchResults = await qdrantClient.searchBatch(collectionName, {

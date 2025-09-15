@@ -3,12 +3,13 @@ import axios from "axios";
 import { useAuth } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { File, Youtube, Type, PlusCircle, Menu } from "lucide-react";
+import { File, Youtube, Type, PlusCircle, Menu, Globe } from "lucide-react";
 
 const iconMap = {
   youtube: <Youtube className="w-4 h-4 text-red-500 flex-shrink-0" />,
   pdf: <File className="w-4 h-4 text-blue-400 flex-shrink-0" />,
   text: <Type className="w-4 h-4 text-green-400 flex-shrink-0" />,
+  web: <Globe className="w-4 h-4 text-white flex-shrink-0" />,
 };
 
 function Sidebar({ isOpen, onClose }) {
@@ -40,6 +41,7 @@ function Sidebar({ isOpen, onClose }) {
     ...(data?.youtube || []),
     ...(data?.pdf || []),
     ...(data?.text || []),
+    ...(data?.web || []),
   ];
 
   return (
@@ -50,7 +52,7 @@ function Sidebar({ isOpen, onClose }) {
       `}
     >
       <div className={`flex-1 overflow-hidden ${!isOpen && "hidden"}`}>
-        <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex items-center justify-between gap-2  mb-4">
           <button
             onClick={onClose}
             className="p-1 rounded-full text-gray-400 hover:text-white hover:bg-zinc-700"
@@ -66,7 +68,7 @@ function Sidebar({ isOpen, onClose }) {
           </button>
         </div>
 
-        <div className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
+        <div className="flex-1 pt-2 space-y-2 overflow-y-auto no-scrollbar">
           <h2 className="text-lg font-semibold flex-grow">Documents</h2>
           
           {loading && <p>Loading...</p>}

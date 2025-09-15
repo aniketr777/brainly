@@ -2,6 +2,7 @@ import qdrantClient from "../lib/qdrantClient.js";
 import Youtube from "../model/youtube-collection.js";
 import Pdf from "../model/pdf-collection.js";
 import Text from "../model/text-collection.js";
+import Web from "../model/web-collection.js";
 import toast from "react-hot-toast";
 import deleteFromCloudinary from "../lib/deleteFromCloudinary.js";
 import { clerkClient } from "@clerk/express";
@@ -19,8 +20,8 @@ export const deleteController = async (req, res) => {
   try {
     const { type, mongo_id } = req.body;
     const { userId } = req.auth();
-    const { plan, free_usage } = req; // get user plan info
-    const collectionName = "documents_collection";
+    const { plan, free_usage } = req; 
+    const collectionName = "store";
 
     if (!mongo_id) {
       return res.status(400).json({ error: "Missing document ID" });
@@ -30,6 +31,7 @@ export const deleteController = async (req, res) => {
     if (type === "youtube") Model = Youtube;
     else if (type === "pdf") Model = Pdf;
     else if (type === "text") Model = Text;
+    else if(type=== "web") Model = Web;
     else return res.status(400).json({ error: "Invalid type" });
 
     const doc = await Model.findOne({ _id: mongo_id, user_id: userId });

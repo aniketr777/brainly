@@ -11,8 +11,9 @@ import ChatBox from "@/components/ChatBox";
 const ChatPage = () => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
   const { getToken } = useAuth();
+  const [searchType, setSearchType] = useState("Doc Search");
 
   const handleSendMessage = async (userMessage) => {
     if (!userMessage.trim()) return;
@@ -23,28 +24,51 @@ const ChatPage = () => {
 
     try {
       const token = await getToken();
-      const response = await axios.post(
-        "/api/chat",
-        { query: userMessage },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
 
-      const botResponse = response.data;
-      const newBotMessage = {
-        role: "ai",
-        content: botResponse.answer,
-        sources: botResponse.sources || [],
-      };
-      setMessages((prev) => [...prev, newBotMessage]);
-    } catch (error) {
-      console.error("API call failed:", error);
-      const errorBotMessage = {
-        role: "ai",
-        content: "Sorry, something went wrong. Please try again.",
-        sources: [],
-      };
-      setMessages((prev) => [...prev, errorBotMessage]);
+      if (searchType === "Doc Search") {
+        const { data } = await axios.post(
+          "/api/chat",
+          { query: userMessage },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "ai",
+            searchType,
+            content: data.answer || "No answer found.",
+            sources: data.sources || [],
+          },
+        ]);
+      } else {
+        // --- THIS BLOCK IS NOW CORRECTED ---
+        const { data } = await axios.post(
+          "/api/webSearch",
+          { query: userMessage },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "ai",
+            searchType,
+            content: data.answer || "No summary available.",
+            results: data.citations || data.sources || [],
+          },
+        ]);
+        // console.log("Answer from API:",answer);
+        // console.log("Citations from API:", citations);
+        // --- END OF CORRECTION ---
+      }
+    } catch (err) {
+      console.error("API call failed:", err);
       toast.error("Error communicating with the server.");
+      setMessages((prev) => [
+        ...prev,
+        { role: "ai", content: "⚠️ Something went wrong. Try again." },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -57,6 +81,7 @@ const ChatPage = () => {
       <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex flex-1 flex-col relative">
+        {/* Topbar */}
         <header className="flex items-center p-4 bg-[#131314] h-[60px] border-b border-zinc-700">
           {!isSidebarOpen && (
             <button
@@ -67,21 +92,24 @@ const ChatPage = () => {
             </button>
           )}
           <div className="flex-grow" />
-          <div className="flex items-center gap-4">
-            <UserButton afterSignOutUrl="/" />
-          </div>
+          <UserButton afterSignOutUrl="/" />
         </header>
 
+        {/* Chat Area */}
         <div className="flex flex-1 flex-col overflow-hidden">
           <ChatArea
             messages={messages}
             loading={loading}
             onSendMessage={handleSendMessage}
+            setSearchType={setSearchType}
           />
 
-          {/* If chat has started, render ChatBox at the very bottom */}
           {hasStarted && (
-            <ChatBox onSendMessage={handleSendMessage} loading={loading} />
+            <ChatBox
+              onSendMessage={handleSendMessage}
+              loading={loading}
+              setSearchType={setSearchType}
+            />
           )}
         </div>
       </div>

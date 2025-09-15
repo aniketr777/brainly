@@ -1,31 +1,25 @@
-import axios from "axios";
+import { Exa } from "exa-js";
 
-const url = "https://www.searchapi.io/api/v1/search";
+const exa = new Exa(process.env.EXA_API_KEY);
 
-const search = async (query) => {
+const webSearch = async (req, res) => {
+  const { query } = req.body;
+
+  if (!query || typeof query !== "string") {
+    return res.status(400).json({ error: "Query must be a string" });
+  }
+
   try {
-    const params = {
-      engine: "google",
-      q: query, 
-      api_key: process.env.DUCKDUCKGO, 
-    };
-    console.log("params",params);
-    const response = await axios.get(url, { params }); 
-    console.log(response.data);
-    return response.data; 
+    // Pass query as a string, not an object
+    const result = await exa.answer(query);
+
+    res.json(
+      result
+    );
   } catch (error) {
-    console.error("Error during search:", error.message);
-    throw error;
+    console.error("Error occurred:", error);
+    res.status(500).json({ error: error.message });
   }
 };
 
-const webSearch = async(req,res) =>{
-  const {query} = req.body;
-    try{
-      const result = await search(query);
-      return result;
-    }catch(e){
-      console.log(e);
-    }
-}
 export default webSearch;
