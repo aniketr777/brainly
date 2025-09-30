@@ -8,6 +8,7 @@ import Sidebar from "@/components/Sidebar";
 import ChatArea from "@/components/ChatArea";
 import ChatBox from "@/components/ChatBox";
 
+
 const ChatPage = () => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);

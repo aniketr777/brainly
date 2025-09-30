@@ -72,7 +72,7 @@ export const chatController = async (req, res) => {
     Follow these rules strictly:
     1.  Generate questions that cover different angles, keywords, and perspectives.
     2.  Your output MUST be a valid JSON array of strings.
-    3.  Do NOT include any explanations, introductory text, or Markdown code blocks like \`\`\`json.
+    3.  Do NOT include any  introductory text, or Markdown code blocks like \`\`\`json.
     4.  Your response must start with '[' and end with ']'.
 
     User's Original Question:
@@ -178,7 +178,7 @@ export const chatController = async (req, res) => {
     const finalPrompt = `
         Based on the following context, please provide a comprehensive answer to the user's question.
       Do not mention the context in your answer. Just answer the question directly.
-      Please follow this Rule :  1) That when ever you are writting code in any language , then please first write the code block in triple backticks. 2) Dont go out of Context 
+      Please follow this Rule :  1) That when ever you are writting code in any language , then please first write the code block in triple backticks. 2) Try to explain the concept in detail. 
       CONTEXT:
       ${context}
 

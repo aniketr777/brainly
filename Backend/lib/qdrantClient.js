@@ -12,7 +12,7 @@ const qdrantApiKey =
 const qdrantClient = new QdrantClient({
   url: qdrantUrl,
   apiKey: qdrantApiKey,
-  checkCompatibility: true,
+  checkCompatibility: false,
 });
 
 // Export the instance to be used in other files

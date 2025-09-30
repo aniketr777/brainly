@@ -18,6 +18,7 @@ const auth = async (req, res, next) => {
       // reset free usage for premium users (optional)
       await clerkClient.users.updateUserMetadata(userId, {
         privateMetadata: {
+          plan:"premium",
           free_usage: 0,
         },
       });
@@ -25,7 +26,7 @@ const auth = async (req, res, next) => {
     }
 
     req.plan = hasPremiumPlan ? "premium" : "free";
-
+    // console.log(`User ${userId} is on the ${req.plan} plan.`);
     next();
   } catch (e) {
     res.status(500).json({

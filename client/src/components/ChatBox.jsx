@@ -1,14 +1,20 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Plus, Mic, X } from "lucide-react";
+import { ReactMediaRecorder } from "react-media-recorder";
+import axios from "axios";
+import { toast } from "react-hot-toast";
+
 
 function ChatBox({ onSendMessage, loading, setSearchType }) {
   const [message, setMessage] = useState("");
-  const textareaRef = useRef(null);
+  const [audioLoading, setAudioLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [selectedType, setSelectedType] = useState("");
+  const textareaRef = useRef(null);
 
   const options = ["Web Search", "Doc Search"];
 
+  // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -36,6 +42,26 @@ function ChatBox({ onSendMessage, loading, setSearchType }) {
     setSelectedType(opt);
     setSearchType(opt);
     setOpen(false);
+  };
+
+  // Upload audio and get transcription
+  const sendAudioToBackend = async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      setAudioLoading(true);
+      const response = await axios.post("/api/convert-audio", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const data = response.data;
+      setMessage(data.text || ""); // update textarea with transcription
+    } catch (err) {
+      console.error("Error uploading audio:", err);
+      toast.error(err.response?.data?.error || "Audio upload failed.");
+    } finally {
+      setAudioLoading(false);
+    }
   };
 
   return (
@@ -87,22 +113,39 @@ function ChatBox({ onSendMessage, loading, setSearchType }) {
             onKeyPress={handleKeyPress}
             placeholder="Ask anything"
             className="flex-1 bg-transparent text-white outline-none resize-none placeholder-gray-500 max-h-[120px] no-scrollbar text-sm"
-            disabled={loading}
+            disabled={loading || audioLoading}
           />
 
           {/* Right buttons */}
           {message.trim() ? (
             <button
               onClick={handleSend}
-              disabled={!message.trim() || loading}
+              disabled={!message.trim() || loading || audioLoading}
               className="p-2 rounded-full bg-white text-black hover:bg-gray-200 disabled:bg-zinc-600 disabled:text-gray-400 shrink-0"
             >
               <Send size={16} />
             </button>
           ) : (
-            <button className="p-2 text-gray-400 hover:text-white shrink-0">
-              <Mic size={18} />
-            </button>
+            <ReactMediaRecorder
+              audio
+              onStop={(blobUrl, blob) => {
+                const file = new File([blob], "audio.wav", {
+                  type: "audio/wav",
+                });
+                sendAudioToBackend(file);
+              }}
+              render={({ status, startRecording, stopRecording }) => (
+                <button
+                  onClick={
+                    status === "recording" ? stopRecording : startRecording
+                  }
+                  className="p-2 text-gray-400 hover:text-white shrink-0"
+                  disabled={audioLoading}
+                >
+                  {status === "recording" ? <X /> : <Mic />}
+                </button>
+              )}
+            />
           )}
         </div>
       </div>

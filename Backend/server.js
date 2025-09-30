@@ -4,22 +4,18 @@ import dotenv from "dotenv";
 import connectDB from "./config/mongo.js";
 import deleteRoutes from "./routes/delete.js";
 import uploadRoutes from "./routes/upload.js";
-import qdrantClient from "./lib/qdrantClient.js";
+// import qdrantClient from "./lib/qdrantClient.js";
 import chatRoutes from "./routes/chat.js";
 import GetDataRoutes from "./routes/data.js";
 import { clerkMiddleware } from "@clerk/express";
-import showRoutes from "./routes/show.js";
+// import showRoutes from "./routes/show.js";
 import webSearchRoutes from "./routes/webSearch.js";
 dotenv.config();
 
 const app = express();
 
 app.use(
-  cors({
-    origin: "*", 
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  cors()
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

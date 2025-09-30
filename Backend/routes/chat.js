@@ -3,8 +3,13 @@ import {
  chatController
 } from "../controllers/chatController.js";
 import auth from "../middleware/auth.js";
+import { convertor } from "../controllers/AudioConverter.js";
+import {upload} from "../middleware/audioUpload.js";
+
 const router = express.Router();
 
 router.post("/chat", auth, chatController);
+
+router.post("/convert-audio", upload.single("file"), convertor);
 
 export default router;

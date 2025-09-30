@@ -90,8 +90,9 @@ function ChatArea({ messages, loading, onSendMessage, setSearchType }) {
                     {msg.searchType === "Doc Search" &&
                       msg.sources?.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 self-start mt-1">
-                          {msg.sources.map((src, i) => (
+                          {[...new Set(msg.sources)].map((src, i) => (
                             <Source key={i} source={src} index={i + 1} />
+                            
                           ))}
                         </div>
                       )}
