@@ -9,6 +9,7 @@ cloudinary.config({
   api_secret: process.env.API_SECRET,
 });
 
+// Function to upload PDF to Cloudinary
 const uploadPdf = async (fileBuffer, originalName) => {
   return new Promise((resolve, reject) => {
     const fileName = originalName.split(".").slice(0, -1).join(".");
@@ -16,29 +17,40 @@ const uploadPdf = async (fileBuffer, originalName) => {
 
     const uploadStream = cloudinary.uploader.upload_stream(
       {
-        resource_type: "raw",
-        public_id: public_id,
+        resource_type: "auto", // keeps PDFs as raw files
+        public_id,
       },
       (error, result) => {
         if (error) {
-          console.error(" Cloudinary stream upload error:", error);
+          console.error("Upload error:", error);
           return reject(error);
         }
-        if (result) {
-          console.log(" PDF uploaded successfully via stream to Cloudinary");
-          resolve(result);
-        } else {
-          // This case handles unexpected situations where there's no error but also no result
-          reject(
-            new Error("Cloudinary upload failed without returning a result.")
-          );
-        }
+        console.log("✅ Upload success:", {
+          public_id: result.public_id,
+          secure_url: result.secure_url,
+        });
+        resolve(result);
       }
     );
 
-    // Create a readable stream from the buffer and pipe it to Cloudinary
+    // Pipe the file buffer into Cloudinary
     Readable.from(fileBuffer).pipe(uploadStream);
   });
 };
 
-export default uploadPdf;
+// Function to generate a thumbnail URL from PDF
+const getPdfThumbnailUrl = (publicId) => {
+  const url = cloudinary.url(`${publicId}.jpg`, {
+    secure: true,
+    transformation: [
+      { width: 300, height: 150, crop: "fill" },
+      { quality: "auto" },
+    ],
+  });
+  console.log("🔗 Generated thumbnail URL:", url);
+  return url;
+};
+
+export default {uploadPdf , getPdfThumbnailUrl} ;
+
+

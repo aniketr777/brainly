@@ -16,7 +16,74 @@ import UploadDialog from "../components/uploadDialog";
 import YoutubeCard from "../components/YoutubeCard";
 import { RainbowButton } from "@/components/magicui/rainbow-button";
 
+
 axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
+
+function GenericCard({ doc, onDelete, onView }) {
+  // Determine media content
+  let media;
+  if (doc.type === "web") {
+    media = (
+      <img
+        src={doc.image || "https://via.placeholder.com/300x180?text=Website"}
+        alt={doc.title}
+        className="w-full h-[160px] object-cover rounded-t-lg"
+      />
+    );
+  } else if (doc.type === "pdf") {
+    media = (
+      <img
+        src={doc.thumbnail}
+        alt={doc.metadata.filename || doc.metadata.title}
+        className="w-full h-[160px] object-cover rounded-t-lg"
+      />
+    );
+  }
+
+  // Determine icon
+  // let icon = null;
+  // if (doc.type === "text") icon = <FileText className="w-5 h-5 text-gray-400" />;
+  // if (doc.type === "web") icon = <Globe className="w-4 h-4 text-gray-400" />;
+
+  return (
+    <div
+      className="group relative bg-[#1c1c1c] rounded-lg overflow-hidden shadow-md h-[220px] cursor-pointer transition hover:shadow-lg"
+      onClick={() => onView(doc)}
+    >
+      {media && <div className="h-[160px]">{media}</div>}
+
+      <div className="p-2 flex flex-col justify-between h-[80px]">
+        <h3
+          className="text-md font-bold text-gray-100 truncate"
+          title={doc.metadata?.title || doc.metadata?.filename || doc.title}
+        >
+          {doc.metadata?.title || doc.metadata?.filename || doc.title || "Untitled"}
+        </h3>
+
+        {doc.type === "text" && (
+          <p className="text-sm text-gray-300 truncate">
+            {doc.text  ? (doc.text.length > 100 ? doc.text.substring(0, 100) + "..." : doc.text) : "No preview available"}
+          </p>
+        )}
+
+        {/* {icon && <div className="mt-1 flex items-center gap-1">{icon}</div>} */}
+      </div>
+
+      {/* Hover overlay */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-lg">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(doc._id, doc.type);
+          }}
+          className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition"
+        >
+          <Trash2 size={18} />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function DocsGrid({ data, onDelete }) {
   const allDocs = [
@@ -31,7 +98,7 @@ function DocsGrid({ data, onDelete }) {
       window.open(doc.url, "_blank", "noopener,noreferrer");
     }
     if (doc.type === "pdf") {
-      // future: show PDF viewer
+      // future: PDF viewer
     }
   };
 
@@ -39,10 +106,7 @@ function DocsGrid({ data, onDelete }) {
     return (
       <div className="flex-1 px-4 sm:px-6 lg:p-8">
         <div className="text-center text-gray-500">
-          <p>
-            No documents uploaded yet. Click "Upload New Content" to get
-            started.
-          </p>
+          No documents uploaded yet. Click "Upload New Content" to get started.
         </div>
       </div>
     );
@@ -51,95 +115,24 @@ function DocsGrid({ data, onDelete }) {
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:p-8">
       <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 pb-6">
-        {allDocs.map((doc) => {
-          if (doc.type === "youtube") {
-            return (
-              <YoutubeCard
-                key={doc._id}
-                metadata={doc.metadata}
-                link={doc.link}
-                onDelete={() => onDelete(doc._id, doc.type)}
-                onView={() => handleView(doc)}
-              />
-            );
-          }
-
-          if (doc.type === "web") {
-            return (
-              <div
-                key={doc._id}
-                className="group relative bg-[#1c1c1c] rounded-lg overflow-hidden shadow hover:shadow-lg transition cursor-pointer"
-                onClick={() => handleView(doc)}
-              >
-                <img
-                  src={
-                    doc.image ||
-                    "https://via.placeholder.com/300x180?text=Website"
-                  }
-                  alt={doc.title}
-                  className="h-40 w-full object-cover"
-                />
-                <div className="p-3">
-                  <div className="flex items-center gap-2">
-                    <Globe className="text-gray-400 h-4 w-4" />
-                    <p
-                      className="text-sm font-semibold truncate w-full text-gray-200"
-                      title={doc.title}
-                    >
-                      {doc.title || "Untitled Website"}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Hover overlay */}
-                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(doc._id, doc.type);
-                    }}
-                    className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              </div>
-            );
-          }
-
-          if (doc.type === "pdf" || doc.type === "text") {
-            return (
-              <div
-                key={doc._id}
-                className="group relative bg-[#1c1c1c] p-4 rounded-lg flex flex-col justify-between h-[220px]"
-              >
-                <div className="flex flex-col mt-5 items-center text-center">
-                  <FileText className="w-16 h-16 mx-auto text-gray-500 mb-2" />
-                  <p
-                    className="text-sm font-semibold truncate w-full text-gray-200"
-                    title={doc.metadata.filename || doc.metadata.title}
-                  >
-                    {doc.metadata.filename || doc.metadata.title}
-                  </p>
-                </div>
-                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <button
-                    onClick={() => onDelete(doc._id, doc.type)}
-                    className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              </div>
-            );
-          }
-
-          return null;
-        })}
+        {allDocs.map((doc) =>
+          doc.type === "youtube" ? (
+            <YoutubeCard
+              key={doc._id}
+              metadata={doc.metadata}
+              link={doc.link}
+              onDelete={() => onDelete(doc._id, doc.type)}
+              onView={() => handleView(doc)}
+            />
+          ) : (
+            <GenericCard key={doc._id} doc={doc} onDelete={onDelete} onView={handleView} />
+          )
+        )}
       </div>
     </div>
   );
 }
+
 
 function GetDocs() {
   const { user } = useUser();

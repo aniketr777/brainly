@@ -2,10 +2,6 @@
 import { PricingTable } from "@clerk/clerk-react"
 
 
-
-
-
-
 const Plan = () => {
   return (
     <>

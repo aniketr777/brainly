@@ -14,12 +14,7 @@ let audioFilePath = null;
         apiSubscriptionKey: process.env.SARVAMAI_API_KEY,
     });
     const audioFile = fs.createReadStream(audio.path);
-    audioFilePath = audio.path; // Store the path for cleanup later
-    // const response = await client.speechToText.transcribe({
-    //   file: audioFile,
-    //   language_code: "unknown",
-    //   model: "saarika:v2.5",
-    // });
+    audioFilePath = audio.path;
     const response=await client.speechToText.translate({
       file: fs.createReadStream(audio.path),
     });

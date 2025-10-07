@@ -7,6 +7,7 @@ const pdfSchema = new mongoose.Schema({
     uploadedAt: { type: Date, default: Date.now },
   },
   filepath: { type: String, required: true }, // stored path
+  thumbnail:{type:String},
   user_id: { type: String, required: true },
   chunk: { type: Number, required: true },
   created_at: { type: Date, default: Date.now },

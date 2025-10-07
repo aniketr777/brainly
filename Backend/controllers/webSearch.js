@@ -10,9 +10,7 @@ const webSearch = async (req, res) => {
   }
 
   try {
-    // Pass query as a string, not an object
     const result = await exa.answer(query);
-
     res.json(
       result
     );

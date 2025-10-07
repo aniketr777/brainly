@@ -11,8 +11,9 @@ import Web from "../model/web-collection.js";
 
 import Text from "../model/text-collection.js";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+import cloudinaryUtils from "../lib/uploadPdf.js";
+const { uploadPdf, getPdfThumbnailUrl } = cloudinaryUtils;
 
-import uploadPdf from "../lib/uploadPdf.js";
 import { clerkClient } from "@clerk/express";
 
 
@@ -78,7 +79,6 @@ const ensureCollectionExists = async (collectionName) => {
   }
 };
 
-// --- Controllers with Rollback Logic ---
 
 export const youtubeUpload = async (req, res) => {
   let mongo_id = null; // Variable to hold the ID for rollback
@@ -190,6 +190,7 @@ export const pdfUpload = async (req, res) => {
     }
 
     const { originalname, size } = req.file;
+    // console.log(req.file);
     if (size > 5 * 1024 * 1024) {
       return res.status(400).json({ error: "File size exceeds 5 MB limit" });
     }
@@ -197,8 +198,8 @@ export const pdfUpload = async (req, res) => {
     // 2. Upload to Cloudinary
     const cloudinary = await uploadPdf(fileBuffer, originalname);
     cloudinary_public_id = cloudinary.public_id; // Store for potential rollback
-
     // 3. Load PDF content and split into chunks
+    const thumbnail = getPdfThumbnailUrl(cloudinary.public_id);
     const pdfBlob = new Blob([fileBuffer], { type: "application/pdf" });
     const loader = new WebPDFLoader(pdfBlob, { splitPages: false });
     const docs = await loader.load();
@@ -223,8 +224,9 @@ export const pdfUpload = async (req, res) => {
       user_id: userId,
       chunk: texts.length,
       public_id: cloudinary.public_id,
+      thumbnail:thumbnail,
     });
-    mongo_id = result._id.toString(); // Store for potential rollback
+    mongo_id = result._id.toString(); 
 
     // 5. Generate embeddings and store in Qdrant
     const vectors = await embeddings.embedDocuments(texts);
