@@ -103,15 +103,13 @@ def fetch_video_metadata(video_id: str):
         return {"error": "Could not fetch video metadata."}
 
 
-# ---------------- API Endpoint ----------------
+
 
 class YouTubeRequest(BaseModel):
     link: str
     lang: str = "en"
 
 
-# Using standard 'def' is better here as the helper functions are synchronous (blocking).
-# FastAPI will run this in a separate thread pool automatically.
 @app.post("/get-transcript")
 def get_youtube_data(request: YouTubeRequest):
 

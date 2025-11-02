@@ -97,7 +97,7 @@ export const youtubeUpload = async (req, res) => {
 
     
 
-    const response = await fetch(`${process.env.TRANSCRIPT_SERVICE_URL}/get-transcript`, {
+    const response = await fetch(`${process.env.TRANSCRIPT_SERVICE_URL || "http://127.0.0.1:8000"}/get-transcript`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ link, lang: "en" }),
