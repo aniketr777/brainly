@@ -113,12 +113,12 @@ export default function UploadDialog({ onUploadComplete }) {
 
       const successMessage =
         activeTab === "youtube"
-          ? "YouTube link uploaded successfully! 🎥"
+          ? "YouTube link uploaded successfully! "
           : activeTab === "website"
-          ? "Website link uploaded successfully! 🌐"
+          ? "Website link uploaded successfully! "
           : activeTab === "pdf"
-          ? "PDF uploaded successfully! 📄"
-          : "Text uploaded successfully! ✨";
+          ? "PDF uploaded successfully! "
+          : "Text uploaded successfully! ";
 
       onUploadComplete({ success: true, message: successMessage });
 
@@ -132,7 +132,7 @@ export default function UploadDialog({ onUploadComplete }) {
       setTextContent("");
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (err) {
-      console.error("❌ Upload Error:", err);
+      console.error(" Upload Error:", err);
       const errorMessage = err.response?.data?.message || "Upload failed ❌";
       onUploadComplete({ success: false, error: errorMessage });
     } finally {

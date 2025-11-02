@@ -17,7 +17,6 @@ import YoutubeCard from "../components/YoutubeCard";
 import { RainbowButton } from "@/components/magicui/rainbow-button";
 
 
-axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
 
 function GenericCard({ doc, onDelete, onView }) {
   // Determine media content

@@ -3,11 +3,12 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Sparkles, Copy, User } from "lucide-react";
 import { toast } from "react-hot-toast";
-
+import AudioPlayer from "./AudioPlayer"; // Updated import for the new component
 import CodeBlockSimple from "./CodeBlockSimple";
 import Source from "./Source";
 import WebSearchResults from "./WebSearchResults";
 import ChatBox from "./ChatBox";
+import axios from "axios";
 
 function ChatArea({ messages, loading, onSendMessage, setSearchType }) {
   const scrollRef = useRef(null);
@@ -20,6 +21,25 @@ function ChatArea({ messages, loading, onSendMessage, setSearchType }) {
   const handleCopy = (text) => {
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard!");
+  };
+
+  const handleTextToSpeech = async (text) => {
+    try {
+      const response = await axios.post(
+        "/api/text-speech/",
+        { text }, // send as { text: '...' }
+        { responseType: "arraybuffer" }
+      );
+
+      const audioBlob = new Blob([response.data], { type: "audio/mp3" });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audio.play();
+      return audioUrl;
+    } catch (e) {
+      console.error("Text-to-Speech failed:", e);
+      return null;
+    }
   };
 
   const hasStarted = messages.length > 0;
@@ -84,15 +104,24 @@ function ChatArea({ messages, loading, onSendMessage, setSearchType }) {
                       >
                         <Copy size={16} />
                       </button>
+                      <button
+                        onClick={async () => {
+                          const audioUrl = await handleTextToSpeech(
+                            msg.content
+                          );
+                          if (audioUrl) msg.audioUrl = audioUrl;
+                        }}
+                      >
+                        {/* Generate Audio  */}
+                      </button>
                     </div>
-
+                    {msg.audioUrl && <AudioPlayer audioUrl={msg.audioUrl} />}
                     {/* Doc Search sources */}
                     {msg.searchType === "Doc Search" &&
                       msg.sources?.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 self-start mt-1">
                           {[...new Set(msg.sources)].map((src, i) => (
                             <Source key={i} source={src} index={i + 1} />
-                            
                           ))}
                         </div>
                       )}

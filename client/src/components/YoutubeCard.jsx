@@ -3,17 +3,18 @@ import { useState } from "react";
 
 function YoutubeCard({ metadata, link, onDelete, onView }) {
   const [hovered, setHovered] = useState(false);
-  const videoId = function extractVideoId(link) {
-    
-    let match = link.match(/v=([a-zA-Z0-9_-]{11})/);
-    if (match) return match[1];
 
-    match = link.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+  // Extract YouTube video ID from link
+  const getVideoId = (url) => {
+    let match = url.match(/v=([a-zA-Z0-9_-]{11})/); // normal YouTube URL
     if (match) return match[1];
-
+    match = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/); // short URL
+    if (match) return match[1];
     return null;
   };
-  const [vidId, setVidId] = useState(videoId(link));
+
+  const vidId = getVideoId(link);
+
   return (
     <div
       className="group relative bg-[#1c1c1c] rounded-lg overflow-hidden shadow-md h-[220px] transition hover:shadow-lg cursor-pointer"
@@ -46,6 +47,7 @@ function YoutubeCard({ metadata, link, onDelete, onView }) {
       {/* Hover overlay */}
       {hovered && (
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center rounded-lg transition-opacity">
+          {/* Delete button */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -55,8 +57,14 @@ function YoutubeCard({ metadata, link, onDelete, onView }) {
           >
             <Trash2 size={18} />
           </button>
+
+          {/* View button */}
           <button
-            onClick={onView}
+            onClick={(e) => {
+              e.stopPropagation();
+              window.open(link, "_blank"); // open YouTube link in new tab
+              if (onView) onView(); // optional callback
+            }}
             className="bg-white/10 text-white p-3 rounded-full shadow hover:scale-110 transition"
           >
             <Eye size={20} />
