@@ -47,8 +47,8 @@ def fetch_transcript_from_api(video_id: str, prefer_lang: str = "en"):
     different library versions.
     """
     try:
-        api = YouTubeTranscriptApi()
-        transcript_list = api.list(video_id)
+        # api = YouTubeTranscriptApi()
+        transcript_list = YouTubeTranscriptApi.list(video_id)
         transcript = transcript_list.find_transcript([prefer_lang])
         return transcript.fetch()
 
@@ -113,6 +113,5 @@ def get_youtube_data(request: YouTubeRequest):
     return {
         "metadata": metadata,
         "transcript": transcript_text,
-
     }
 
