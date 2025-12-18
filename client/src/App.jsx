@@ -1,15 +1,10 @@
-
-
-import { Button } from "./components/ui/button";
 import GetDocs from "./Pages/GetDocs";
-import ChatPage from "./Pages/ChatPage"
+import ChatPage from "./Pages/ChatPage";
 import Home from "./Pages/Home";
 import { Route, Routes } from "react-router-dom";
-// import Docs from "./Pages/Docs";
 import { Toaster } from "react-hot-toast";
-function App() {
-  
 
+function App() {
   return (
     <>
       <Toaster />

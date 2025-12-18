@@ -1,25 +1,24 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useUser, useAuth } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import {
-  Loader2,
-  MessageSquare,
-  FileText,
-  Trash2,
-  ShieldAlert,
-  Globe,
-} from "lucide-react";
+import { Loader2, MessageSquare, Trash2, ShieldAlert } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 import UploadDialog from "../components/uploadDialog";
 import YoutubeCard from "../components/YoutubeCard";
 import { RainbowButton } from "@/components/magicui/rainbow-button";
 
+const DOCUMENT_LIMIT = 3;
 
+const aggregateDocuments = (data) => [
+  ...(data?.youtube || []).map((doc) => ({ ...doc, type: "youtube" })),
+  ...(data?.pdf || []).map((doc) => ({ ...doc, type: "pdf" })),
+  ...(data?.text || []).map((doc) => ({ ...doc, type: "text" })),
+  ...(data?.web || []).map((doc) => ({ ...doc, type: "web" })),
+];
 
 function GenericCard({ doc, onDelete, onView }) {
-  // Determine media content
   let media;
   if (doc.type === "web") {
     media = (
@@ -39,11 +38,6 @@ function GenericCard({ doc, onDelete, onView }) {
     );
   }
 
-  // Determine icon
-  // let icon = null;
-  // if (doc.type === "text") icon = <FileText className="w-5 h-5 text-gray-400" />;
-  // if (doc.type === "web") icon = <Globe className="w-4 h-4 text-gray-400" />;
-
   return (
     <div
       className="group relative bg-[#1c1c1c] rounded-lg overflow-hidden shadow-md h-[220px] cursor-pointer transition hover:shadow-lg"
@@ -61,11 +55,13 @@ function GenericCard({ doc, onDelete, onView }) {
 
         {doc.type === "text" && (
           <p className="text-sm text-gray-300 truncate">
-            {doc.text  ? (doc.text.length > 100 ? doc.text.substring(0, 100) + "..." : doc.text) : "No preview available"}
+            {doc.text
+              ? doc.text.length > 100
+                ? `${doc.text.substring(0, 100)}...`
+                : doc.text
+              : "No preview available"}
           </p>
         )}
-
-        {/* {icon && <div className="mt-1 flex items-center gap-1">{icon}</div>} */}
       </div>
 
       {/* Hover overlay */}
@@ -84,14 +80,7 @@ function GenericCard({ doc, onDelete, onView }) {
   );
 }
 
-function DocsGrid({ data, onDelete }) {
-  const allDocs = [
-    ...(data?.youtube || []).map((d) => ({ ...d, type: "youtube" })),
-    ...(data?.pdf || []).map((d) => ({ ...d, type: "pdf" })),
-    ...(data?.text || []).map((d) => ({ ...d, type: "text" })),
-    ...(data?.web || []).map((d) => ({ ...d, type: "web" })),
-  ];
-
+function DocsGrid({ documents, onDelete }) {
   const handleView = (doc) => {
     if (doc.type === "web" && doc.url) {
       window.open(doc.url, "_blank", "noopener,noreferrer");
@@ -101,7 +90,7 @@ function DocsGrid({ data, onDelete }) {
     }
   };
 
-  if (!allDocs.length) {
+  if (!documents.length) {
     return (
       <div className="flex-1 px-4 sm:px-6 lg:p-8">
         <div className="text-center text-gray-500">
@@ -114,7 +103,7 @@ function DocsGrid({ data, onDelete }) {
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:p-8">
       <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 pb-6">
-        {allDocs.map((doc) =>
+        {documents.map((doc) =>
           doc.type === "youtube" ? (
             <YoutubeCard
               key={doc._id}
@@ -138,11 +127,11 @@ function GetDocs() {
   const { getToken } = useAuth();
   const navigate = useNavigate();
 
-  const [data, setData] = useState({ youtube: [], pdf: [], text: [], web: [] });
+  const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState("free");
 
-  const fetchDocs = async () => {
+  const fetchDocs = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
@@ -151,7 +140,7 @@ function GetDocs() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const { plan: userPlan, ...docsData } = response.data;
-      setData(docsData || { youtube: [], pdf: [], text: [], web: [] });
+      setDocuments(aggregateDocuments(docsData || {}));
       setPlan(userPlan || "free");
     } catch (err) {
       console.error("❌ Error fetching docs:", err);
@@ -159,7 +148,7 @@ function GetDocs() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken, user]);
 
   const handleUploadComplete = (result) => {
     if (result.success) {
@@ -196,15 +185,22 @@ function GetDocs() {
 
   useEffect(() => {
     fetchDocs();
-  }, [user]);
+  }, [fetchDocs]);
 
-  const allDocsCount =
-    (data.youtube?.length || 0) +
-    (data.pdf?.length || 0) +
-    (data.text?.length || 0) +
-    (data.web?.length || 0);
+  const documentsCount = useMemo(
+    () => documents.length,
+    [documents]
+  );
 
-  const isLimitReached = plan === "free" && allDocsCount >= 3;
+  const isLimitReached = plan === "free" && documentsCount >= DOCUMENT_LIMIT;
+
+  useEffect(() => {
+    if (isLimitReached) {
+      toast.error(
+        `Free plan limit of ${DOCUMENT_LIMIT} documents reached. Delete files or upgrade to add more.`
+      );
+    }
+  }, [isLimitReached]);
 
   if (loading) {
     return (
@@ -223,14 +219,14 @@ function GetDocs() {
           </h1>
           <div className="w-full sm:w-auto flex gap-3">
             <RainbowButton
-              disabled={allDocsCount === 0}
+              disabled={documentsCount === 0}
               className={`flex items-center gap-2 font-semibold py-3 px-6 rounded-lg shadow-md transition-all duration-300 ${
-                allDocsCount === 0
+                documentsCount === 0
                   ? "bg-gray-700 text-gray-400 cursor-not-allowed"
                   : "bg-green-500 hover:bg-green-600 text-white"
               }`}
               onClick={() => {
-                if (allDocsCount > 0) navigate("/Chat");
+                if (documentsCount > 0) navigate("/Chat");
               }}
             >
               <MessageSquare className="h-5 w-5 text-white" />
@@ -243,7 +239,7 @@ function GetDocs() {
           <div className="flex items-center gap-3 text-center p-3 mb-4 bg-yellow-900/50 text-yellow-200 border border-yellow-700 rounded-lg">
             <ShieldAlert className="h-5 w-5 flex-shrink-0" />
             <p className="text-sm">
-              You've reached your 3-document limit. Please{" "}
+              You've reached your {DOCUMENT_LIMIT}-document limit. Please{" "}
               <a
                 href="/pricing"
                 className="font-bold underline hover:text-white"
@@ -261,7 +257,7 @@ function GetDocs() {
         />
       </div>
 
-      <DocsGrid data={data} onDelete={deleteDoc} />
+      <DocsGrid documents={documents} onDelete={deleteDoc} />
     </div>
   );
 }

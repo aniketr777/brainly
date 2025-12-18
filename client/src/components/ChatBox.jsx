@@ -9,7 +9,7 @@ function ChatBox({ onSendMessage, loading, setSearchType }) {
   const [message, setMessage] = useState("");
   const [audioLoading, setAudioLoading] = useState(false);
   const [open, setOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState("");
+  const [selectedType, setSelectedType] = useState("Doc Search");
   const textareaRef = useRef(null);
 
   const options = ["Web Search", "Doc Search"];
@@ -24,6 +24,10 @@ function ChatBox({ onSendMessage, loading, setSearchType }) {
       )}px`;
     }
   }, [message]);
+
+  useEffect(() => {
+    setSearchType(selectedType);
+  }, [selectedType, setSearchType]);
 
   const handleSend = () => {
     if (!message.trim() || loading) return;
@@ -40,7 +44,6 @@ function ChatBox({ onSendMessage, loading, setSearchType }) {
 
   const handleSelect = (opt) => {
     setSelectedType(opt);
-    setSearchType(opt);
     setOpen(false);
   };
 

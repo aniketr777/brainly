@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useAuth, UserButton } from "@clerk/clerk-react";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -8,7 +8,6 @@ import Sidebar from "@/components/Sidebar";
 import ChatArea from "@/components/ChatArea";
 import ChatBox from "@/components/ChatBox";
 
-
 const ChatPage = () => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -16,64 +15,88 @@ const ChatPage = () => {
   const { getToken } = useAuth();
   const [searchType, setSearchType] = useState("Doc Search");
 
-  const handleSendMessage = async (userMessage) => {
-    if (!userMessage.trim()) return;
+  const addMessage = (message) =>
+    setMessages((prev) => [...prev, message]);
 
-    const newUserMessage = { role: "user", content: userMessage };
-    setMessages((prev) => [...prev, newUserMessage]);
+  const handleDocSearch = async (query, token) => {
+    const { data } = await axios.post(
+      "/api/chat",
+      { query },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    return {
+      role: "ai",
+      searchType: "Doc Search",
+      content: data.answer || "No answer found.",
+      sources: data.sources || [],
+    };
+  };
+
+  const handleWebSearch = async (query, token) => {
+    const { data } = await axios.post(
+      "/api/webSearch",
+      { query },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    return {
+      role: "ai",
+      searchType: "Web Search",
+      content: data.answer || "No summary available.",
+      results: data.citations || data.sources || [],
+    };
+  };
+
+  const handleSendMessage = async (userMessage, selectedSearchType) => {
+    if (!userMessage.trim()) {
+      toast.error("Please enter a question to get started.");
+      return;
+    }
+
+    const mode = selectedSearchType || searchType;
+
+    if (!mode) {
+      toast.error("Select a search type before sending a message.");
+      return;
+    }
+
+    addMessage({ role: "user", content: userMessage });
     setLoading(true);
 
     try {
       const token = await getToken();
+      const aiMessage =
+        mode === "Web Search"
+          ? await handleWebSearch(userMessage, token)
+          : await handleDocSearch(userMessage, token);
 
-      if (searchType === "Doc Search") {
-        const { data } = await axios.post(
-          "/api/chat",
-          { query: userMessage },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "ai",
-            searchType,
-            content: data.answer || "No answer found.",
-            sources: data.sources || [],
-          },
-        ]);
-      } else {
-        // --- THIS BLOCK IS NOW CORRECTED ---
-        const { data } = await axios.post(
-          "/api/webSearch",
-          { query: userMessage },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "ai",
-            searchType,
-            content: data.answer || "No summary available.",
-            results: data.citations || data.sources || [],
-          },
-        ]);
-        // console.log("Answer from API:",answer);
-        // console.log("Citations from API:", citations);
-        // --- END OF CORRECTION ---
-      }
+      addMessage(aiMessage);
+      toast.success(
+        mode === "Web Search"
+          ? "Web results summarized."
+          : "Document answer generated."
+      );
     } catch (err) {
       console.error("API call failed:", err);
       toast.error("Error communicating with the server.");
-      setMessages((prev) => [
-        ...prev,
-        { role: "ai", content: "⚠️ Something went wrong. Try again." },
-      ]);
+      addMessage({
+        role: "ai",
+        content: "⚠️ Something went wrong. Try again.",
+      });
     } finally {
       setLoading(false);
     }
   };
+
+  const handleSearchTypeChange = useCallback(
+    (type) => {
+      if (!type || type === searchType) return;
+      setSearchType(type);
+      toast.success(`${type} enabled`);
+    },
+    [searchType]
+  );
 
   const hasStarted = messages.length > 0;
 
@@ -102,14 +125,14 @@ const ChatPage = () => {
             messages={messages}
             loading={loading}
             onSendMessage={handleSendMessage}
-            setSearchType={setSearchType}
+            setSearchType={handleSearchTypeChange}
           />
 
           {hasStarted && (
             <ChatBox
               onSendMessage={handleSendMessage}
               loading={loading}
-              setSearchType={setSearchType}
+              setSearchType={handleSearchTypeChange}
             />
           )}
         </div>
