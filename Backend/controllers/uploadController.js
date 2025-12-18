@@ -85,7 +85,7 @@ export const youtubeUpload = async (req, res) => {
 
   try {
     const { link } = req.body;
-    const { userId } = req.auth();
+    const { userId } = await req.auth();
     const { plan, free_usage } = req;
 
     // 1. Plan Check
@@ -177,7 +177,7 @@ export const pdfUpload = async (req, res) => {
   const collectionName = "store";
 
   try {
-    const { userId } = req.auth();
+    const { userId } = await req.auth();
     const { plan, free_usage } = req;
 
     // 1. Plan check
@@ -279,7 +279,7 @@ export const textUpload = async (req, res) => {
 
   try {
     const { title, text } = req.body;
-    const { userId } = req.auth();
+    const { userId } = await req.auth();
     const { plan, free_usage } = req;
 
     // 1. Plan check
@@ -357,7 +357,7 @@ export const webUpload = async (req, res) => {
 
   try {
     const { url } = req.body;
-    const { userId } = req.auth();
+    const { userId } = await req.auth();
     const { plan, free_usage } = req;
 
     // Check plan

@@ -19,7 +19,7 @@ const decrementUsage = async (userId, plan, free_usage) => {
 export const deleteController = async (req, res) => {
   try {
     const { type, mongo_id } = req.body;
-    const { userId } = req.auth();
+    const { userId } = await req.auth();
     const { plan, free_usage } = req; 
     const collectionName = "store";
 
