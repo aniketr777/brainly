@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth, UserButton } from "@clerk/clerk-react";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { Menu, Clock3, Sparkles } from "lucide-react";
-import { v4 as uuidv4 } from "uuid";
+import { Menu, Clock3, Sparkles, History, LayoutGrid, Loader2 } from "lucide-react";
 
 import Sidebar from "@/components/Sidebar";
 import ChatArea from "@/components/ChatArea";
@@ -14,10 +13,39 @@ const ChatPage = () => {
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(true);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isHistoryOpen, setHistoryOpen] = useState(false);
   const { getToken } = useAuth();
   const [searchType, setSearchType] = useState("Doc Search");
+
+  const buildHeaders = async () => ({
+    Authorization: `Bearer ${await getToken()}`,
+  });
+
+  const formatSession = (chat) => ({
+    id: chat.chatId,
+    title: chat.title || "New Chat",
+    createdAt: chat.createdAt,
+    updatedAt: chat.updatedAt,
+    searchType: chat.searchType || "Doc Search",
+    messages: (chat.messages || chat.message || []).map((msg) => ({
+      role: msg.role === "assistant" ? "ai" : msg.role,
+      content: msg.content,
+      searchType: msg.searchType || chat.searchType || "Doc Search",
+      sources: msg.sources || [],
+      results: msg.results || [],
+    })),
+  });
+
+  const createSessionOnServer = async (title = "New Chat", type = "Doc Search") => {
+    const { data } = await axios.post(
+      "/api/chats",
+      { title, searchType: type },
+      { headers: await buildHeaders() }
+    );
+    return formatSession(data);
+  };
 
   // --- Session helpers ---
   const activeSession = useMemo(
@@ -27,44 +55,37 @@ const ChatPage = () => {
 
   const messages = activeSession?.messages || [];
 
-  // Load stored sessions on mount
+  // Load stored sessions from the database on mount
   useEffect(() => {
-    const stored = localStorage.getItem("brainly-chat-sessions");
-
-    if (stored) {
+    const loadSessions = async () => {
+      setInitializing(true);
       try {
-        const parsed = JSON.parse(stored);
-        setSessions(parsed);
-        if (parsed[0]) {
+        const { data } = await axios.get("/api/chats", {
+          headers: await buildHeaders(),
+        });
+
+        const parsed = (Array.isArray(data) ? data : []).map(formatSession);
+
+        if (parsed.length) {
+          setSessions(parsed);
           setActiveSessionId(parsed[0].id);
           setSearchType(parsed[0].searchType || "Doc Search");
+        } else {
+          const bootstrap = await createSessionOnServer();
+          setSessions([bootstrap]);
+          setActiveSessionId(bootstrap.id);
+          setSearchType(bootstrap.searchType);
         }
-        return;
       } catch (error) {
-        console.warn("Failed to parse chat sessions", error);
+        console.error("Failed to load chat history", error);
+        toast.error("Unable to load chat history");
+      } finally {
+        setInitializing(false);
       }
-    }
-
-    const bootstrapSession = {
-      id: uuidv4(),
-      title: "New Chat",
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      messages: [],
-      searchType: "Doc Search",
     };
 
-    setSessions([bootstrapSession]);
-    setActiveSessionId(bootstrapSession.id);
-    setSearchType(bootstrapSession.searchType);
-  }, []);
-
-  // Persist sessions locally
-  useEffect(() => {
-    if (sessions.length) {
-      localStorage.setItem("brainly-chat-sessions", JSON.stringify(sessions));
-    }
-  }, [sessions]);
+    loadSessions();
+  }, [getToken]);
 
   const upsertSession = (sessionId, updater) => {
     setSessions((prev) =>
@@ -74,63 +95,95 @@ const ChatPage = () => {
     );
   };
 
-  const handleSearchTypeChange = (type) => {
+  const handleSearchTypeChange = async (type) => {
     setSearchType(type);
     if (activeSessionId) {
       upsertSession(activeSessionId, (session) => ({
         searchType: type || session.searchType,
       }));
+
+      try {
+        await axios.patch(
+          `/api/chats/${activeSessionId}`,
+          { searchType: type },
+          { headers: await buildHeaders() }
+        );
+      } catch (error) {
+        console.error("Failed to sync search type", error);
+      }
     }
   };
 
-  const handleNewChat = () => {
-    const newSession = {
-      id: uuidv4(),
-      title: "New Chat",
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      messages: [],
-      searchType: "Doc Search",
-    };
-
-    setSessions((prev) => [newSession, ...prev]);
-    setActiveSessionId(newSession.id);
-    setSearchType(newSession.searchType);
-    setHistoryOpen(false);
-    return newSession.id;
+  const handleNewChat = async () => {
+    try {
+      const newSession = await createSessionOnServer("New Chat", searchType || "Doc Search");
+      setSessions((prev) => [newSession, ...prev]);
+      setActiveSessionId(newSession.id);
+      setSearchType(newSession.searchType);
+      setHistoryOpen(false);
+      return newSession.id;
+    } catch (error) {
+      console.error("Failed to create chat", error);
+      toast.error("Unable to start a new chat");
+      return null;
+    }
   };
 
-  const handleRename = (sessionId, title) => {
-    upsertSession(sessionId, () => ({ title, updatedAt: Date.now() }));
+  const handleRename = async (sessionId, title) => {
+    try {
+      const { data } = await axios.patch(
+        `/api/chats/${sessionId}`,
+        { title },
+        { headers: await buildHeaders() }
+      );
+      const updated = formatSession(data);
+      upsertSession(sessionId, () => ({ title: updated.title, updatedAt: updated.updatedAt }));
+    } catch (error) {
+      console.error("Failed to rename chat", error);
+      toast.error("Unable to rename chat");
+    }
   };
 
-  const handleDelete = (sessionId) => {
-    setSessions((prev) => prev.filter((session) => session.id !== sessionId));
-
-    if (sessionId === activeSessionId) {
+  const handleDelete = async (sessionId) => {
+    try {
+      await axios.delete(`/api/chats/${sessionId}`, { headers: await buildHeaders() });
       const remaining = sessions.filter((session) => session.id !== sessionId);
-      const nextSession = remaining[0];
-      if (nextSession) {
-        setActiveSessionId(nextSession.id);
-        setSearchType(nextSession.searchType || "Doc Search");
-      } else {
-        handleNewChat();
+      setSessions(remaining);
+
+      if (sessionId === activeSessionId) {
+        setActiveSessionId(null);
+        const nextSession = remaining[0];
+        if (nextSession) {
+          setActiveSessionId(nextSession.id);
+          setSearchType(nextSession.searchType || "Doc Search");
+        } else {
+          const newId = await handleNewChat();
+          if (newId) setActiveSessionId(newId);
+        }
       }
+    } catch (error) {
+      console.error("Failed to delete chat", error);
+      toast.error("Unable to delete chat");
     }
   };
 
   const handleSendMessage = async (userMessage) => {
     if (!userMessage.trim()) return;
 
-    const targetSessionId = activeSessionId ?? handleNewChat();
+    let targetSessionId = activeSessionId;
+    if (!targetSessionId) {
+      targetSessionId = await handleNewChat();
+      if (!targetSessionId) return;
+    }
 
-    const newUserMessage = { role: "user", content: userMessage };
+    const newUserMessage = { role: "user", content: userMessage, searchType };
     const addUserMessage = (prevMessages = []) => [...prevMessages, newUserMessage];
 
+    let updatedTitle = "New Chat";
     setSessions((prev) =>
       prev.map((session) => {
         if (session.id !== targetSessionId) return session;
-        const updatedTitle =
+        updatedTitle =
           session.messages.length === 0 && userMessage.trim().length
             ? userMessage.trim().slice(0, 60) + (userMessage.length > 60 ? "…" : "")
             : session.title;
@@ -147,6 +200,7 @@ const ChatPage = () => {
 
     try {
       const token = await getToken();
+      let aiMessage;
 
       if (searchType === "Doc Search") {
         const { data } = await axios.post(
@@ -155,25 +209,12 @@ const ChatPage = () => {
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
-        setSessions((prev) =>
-          prev.map((session) =>
-            session.id === targetSessionId
-              ? {
-                  ...session,
-                  updatedAt: Date.now(),
-                  messages: [
-                    ...session.messages,
-                    {
-                      role: "ai",
-                      searchType,
-                      content: data.answer || "No answer found.",
-                      sources: data.sources || [],
-                    },
-                  ],
-                }
-              : session
-          )
-        );
+        aiMessage = {
+          role: "ai",
+          searchType,
+          content: data.answer || "No answer found.",
+          sources: data.sources || [],
+        };
       } else {
         const { data } = await axios.post(
           "/api/webSearch",
@@ -181,24 +222,31 @@ const ChatPage = () => {
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
+        aiMessage = {
+          role: "ai",
+          searchType,
+          content: data.answer || "No summary available.",
+          results: data.citations || data.sources || [],
+        };
+      }
+
+      if (aiMessage) {
         setSessions((prev) =>
           prev.map((session) =>
             session.id === targetSessionId
               ? {
                   ...session,
                   updatedAt: Date.now(),
-                  messages: [
-                    ...session.messages,
-                    {
-                      role: "ai",
-                      searchType,
-                      content: data.answer || "No summary available.",
-                      results: data.citations || data.sources || [],
-                    },
-                  ],
+                  messages: [...session.messages, aiMessage],
                 }
               : session
           )
+        );
+
+        await axios.post(
+          `/api/chats/${targetSessionId}/messages`,
+          { messages: [newUserMessage, aiMessage], title: updatedTitle, searchType },
+          { headers: await buildHeaders() }
         );
       }
     } catch (err) {
@@ -226,89 +274,127 @@ const ChatPage = () => {
   const hasStarted = messages.length > 0;
 
   return (
-    <div className="flex h-screen w-full bg-gradient-to-br from-[#0b0c10] via-[#0e1014] to-[#0a0b0f] text-white">
+    <div className="flex h-screen w-full bg-gradient-to-br from-[#090a0e] via-[#0c0e13] to-[#07080c] text-white relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 opacity-60">
+        <div className="absolute -left-10 -top-10 w-60 h-60 bg-indigo-500/20 blur-3xl" />
+        <div className="absolute right-0 top-20 w-80 h-80 bg-purple-500/10 blur-3xl" />
+        <div className="absolute left-20 bottom-0 w-72 h-72 bg-blue-500/10 blur-3xl" />
+      </div>
       <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex flex-1 flex-col relative">
-        {/* Topbar */}
-        <header className="flex items-center p-4 bg-[#0f1013]/70 backdrop-blur-sm h-[64px] border-b border-zinc-800">
-          <div className="flex items-center gap-3">
-            {!isSidebarOpen && (
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="text-gray-300 hover:text-white rounded-full p-2 border border-zinc-800/80 bg-[#16171a]"
-              >
-                <Menu size={18} />
-              </button>
-            )}
-            <div>
-              <p className="text-sm text-zinc-400">Active workspace</p>
-              <p className="font-semibold text-white">Brainly Assistant</p>
+        <div className="relative flex-1 flex flex-col overflow-hidden">
+          <div className="w-full max-w-5xl mx-auto px-4 pt-6 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSidebarOpen(true)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl border border-zinc-800 bg-white/5 text-sm text-zinc-200 hover:border-indigo-500/50 hover:text-white"
+                >
+                  <Menu size={16} />
+                  <span>Browse docs</span>
+                </button>
+                <button
+                  onClick={() => setHistoryOpen(true)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl border border-indigo-500/60 bg-indigo-500/15 text-sm text-indigo-100 hover:border-indigo-400 hover:bg-indigo-500/25"
+                >
+                  <Clock3 size={16} />
+                  <span>History</span>
+                </button>
+                <button
+                  onClick={handleNewChat}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl border border-green-500/50 bg-green-500/10 text-sm text-green-100 hover:border-green-400 hover:bg-green-500/20"
+                >
+                  <Sparkles size={16} />
+                  <span>New chat</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl border border-zinc-800 bg-white/5 text-xs text-zinc-300">
+                  <History size={16} className="text-indigo-300" />
+                  {activeSession?.title || "New Chat"}
+                </div>
+                <UserButton afterSignOutUrl="/" />
+              </div>
             </div>
-          </div>
 
-          <div className="flex-grow" />
+            <div className="grid md:grid-cols-3 gap-3">
+              <div className="md:col-span-2 rounded-2xl border border-zinc-800 bg-gradient-to-br from-white/5 via-white/0 to-indigo-500/10 p-4 shadow-xl shadow-indigo-900/20">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Conversation</p>
+                    <p className="text-2xl font-semibold text-white line-clamp-1">
+                      {activeSession?.title || "New Chat"}
+                    </p>
+                    <p className="text-sm text-zinc-400 flex items-center gap-2">
+                      <Sparkles size={16} className="text-amber-300" />
+                      <span>{messages.length || 0} messages</span>
+                      <span className="text-zinc-700">•</span>
+                      <span>{new Date(activeSession?.createdAt || Date.now()).toLocaleString()}</span>
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <span className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-indigo-500/40 bg-indigo-500/15 text-sm text-indigo-100">
+                      <LayoutGrid size={16} />
+                      {searchType}
+                    </span>
+                    <button
+                      onClick={() => setHistoryOpen(true)}
+                      className="px-3 py-2 rounded-xl border border-zinc-800 bg-white/5 text-sm text-zinc-200 hover:border-white/50"
+                    >
+                      Switch chat
+                    </button>
+                  </div>
+                </div>
+              </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setHistoryOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-full border border-indigo-500/50 bg-indigo-500/10 text-indigo-100 hover:border-indigo-400 hover:bg-indigo-500/20 transition"
-            >
-              <Clock3 size={16} />
-              <span className="hidden sm:inline text-sm">History</span>
-            </button>
-            <UserButton afterSignOutUrl="/" />
-          </div>
-        </header>
-
-        {/* Chat Area */}
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="w-full max-w-3xl mx-auto px-4 pt-4 flex items-center gap-3">
-            <div className="flex-1 rounded-2xl border border-zinc-800 bg-[#101216]/70 p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.15em] text-zinc-500">Current chat</p>
-                  <p className="text-lg font-semibold text-white line-clamp-1">
-                    {activeSession?.title || "New Chat"}
+              <div className="grid grid-cols-2 md:grid-cols-1 gap-3">
+                <div className="rounded-2xl border border-zinc-800 bg-white/5 p-3">
+                  <p className="text-xs text-zinc-500 mb-1">Active mode</p>
+                  <p className="text-lg font-semibold text-white">{searchType}</p>
+                  <p className="text-sm text-zinc-400 mt-1">Choose Web or Doc search from the composer.</p>
+                </div>
+                <div className="rounded-2xl border border-zinc-800 bg-white/5 p-3">
+                  <p className="text-xs text-zinc-500 mb-1">Last updated</p>
+                  <p className="text-lg font-semibold text-white">
+                    {activeSession?.updatedAt
+                      ? new Date(activeSession.updatedAt).toLocaleTimeString()
+                      : "Just now"}
                   </p>
+                  <p className="text-sm text-zinc-400 mt-1">Stay in sync across devices with saved history.</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="px-3 py-1 rounded-full text-xs border border-indigo-500/50 text-indigo-100 bg-indigo-500/10">
-                    {searchType}
-                  </span>
-                  <button
-                    onClick={handleNewChat}
-                    className="px-3 py-1 text-xs rounded-full border border-zinc-700 hover:border-white/60 bg-white/5 text-white"
-                  >
-                    Start fresh
-                  </button>
-                </div>
-              </div>
-              <div className="mt-2 flex items-center gap-3 text-sm text-zinc-400">
-                <Sparkles size={16} className="text-amber-300" />
-                <span>{messages.length || 0} messages logged</span>
-                <span className="text-zinc-700">•</span>
-                <span>{new Date(activeSession?.createdAt || Date.now()).toLocaleString()}</span>
               </div>
             </div>
           </div>
 
-          <ChatArea
-            messages={messages}
-            loading={loading}
-            onSendMessage={handleSendMessage}
-            setSearchType={handleSearchTypeChange}
-            searchType={searchType}
-          />
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {initializing ? (
+              <div className="flex flex-1 items-center justify-center text-zinc-400">
+                <Loader2 className="animate-spin mr-2" />
+                Loading your conversations...
+              </div>
+            ) : (
+              <>
+                <ChatArea
+                  messages={messages}
+                  loading={loading}
+                  onSendMessage={handleSendMessage}
+                  setSearchType={handleSearchTypeChange}
+                  searchType={searchType}
+                />
 
-          {hasStarted && (
-            <ChatBox
-              onSendMessage={handleSendMessage}
-              loading={loading}
-              setSearchType={handleSearchTypeChange}
-              searchType={searchType}
-            />
-          )}
+                {hasStarted && (
+                  <ChatBox
+                    onSendMessage={handleSendMessage}
+                    loading={loading}
+                    setSearchType={handleSearchTypeChange}
+                    searchType={searchType}
+                  />
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
 

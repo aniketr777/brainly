@@ -15,9 +15,22 @@ const messageSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    searchType: {
+      type: String,
+      default: "Doc Search",
+    },
+    sources: {
+      type: [mongoose.Schema.Types.Mixed],
+      default: [],
+    },
+    results: {
+      type: [mongoose.Schema.Types.Mixed],
+      default: [],
+    },
   },
   { timestamps: true }
 );
+
 const chatSchema = new mongoose.Schema(
   {
     chatId: {
@@ -34,7 +47,14 @@ const chatSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    message: [messageSchema],
+    searchType: {
+      type: String,
+      default: "Doc Search",
+    },
+    messages: {
+      type: [messageSchema],
+      default: [],
+    },
   },
   { timestamps: true }
 );
