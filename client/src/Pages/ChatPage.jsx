@@ -16,7 +16,7 @@ const ChatPage = () => {
   const [initializing, setInitializing] = useState(true);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isHistoryOpen, setHistoryOpen] = useState(false);
-  const { getToken } = useAuth();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
   const [searchType, setSearchType] = useState("Doc Search");
 
   const buildHeaders = async () => ({
@@ -57,8 +57,18 @@ const ChatPage = () => {
 
   // Load stored sessions from the database on mount
   useEffect(() => {
+    if (!isLoaded) return;
+
     const loadSessions = async () => {
       setInitializing(true);
+
+      if (!isSignedIn) {
+        setSessions([]);
+        setActiveSessionId(null);
+        setInitializing(false);
+        return;
+      }
+
       try {
         const { data } = await axios.get("/api/chats", {
           headers: await buildHeaders(),
@@ -78,14 +88,18 @@ const ChatPage = () => {
         }
       } catch (error) {
         console.error("Failed to load chat history", error);
-        toast.error("Unable to load chat history");
+        toast.error(
+          error?.response?.status === 401
+            ? "Please sign in to load your chats."
+            : "Unable to load chat history"
+        );
       } finally {
         setInitializing(false);
       }
     };
 
     loadSessions();
-  }, [getToken]);
+  }, [getToken, isLoaded, isSignedIn]);
 
   const upsertSession = (sessionId, updater) => {
     setSessions((prev) =>
@@ -115,6 +129,11 @@ const ChatPage = () => {
   };
 
   const handleNewChat = async () => {
+    if (!isLoaded || !isSignedIn) {
+      toast.error("Please sign in to start a chat.");
+      return null;
+    }
+
     try {
       const newSession = await createSessionOnServer("New Chat", searchType || "Doc Search");
       setSessions((prev) => [newSession, ...prev]);
@@ -168,6 +187,11 @@ const ChatPage = () => {
   };
 
   const handleSendMessage = async (userMessage) => {
+    if (!isLoaded || !isSignedIn) {
+      toast.error("Please sign in to chat.");
+      return;
+    }
+
     if (!userMessage.trim()) return;
 
     let targetSessionId = activeSessionId;

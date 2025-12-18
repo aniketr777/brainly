@@ -57,7 +57,7 @@ export const chatController = async (req, res) => {
   console.log("\n================= CHAT CONTROLLER START =================");
   try {
     const { query: originalQuery } = req.body;
-    const { userId } = req.auth();
+    const { userId } = await req.auth();
     const collectionName = "store";
 
     if (!originalQuery) {

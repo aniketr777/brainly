@@ -5,7 +5,7 @@ import Web from "../model/web-collection.js";
 
 export const GetDataController = async (req, res) => {
   try {
-    const { userId } = req.auth();
+    const { userId } = await req.auth();
 
     const promises = [
       Youtube.find({ user_id: userId }).lean(),

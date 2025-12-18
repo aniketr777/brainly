@@ -15,7 +15,7 @@ const normalizeMessages = (messages = [], chatId) =>
 
 export const listChatSessions = async (req, res) => {
   try {
-    const { userId } = req.auth();
+    const { userId } = await req.auth();
     const chats = await Chat.find({ userId }).sort({ updatedAt: -1 });
     res.json(chats);
   } catch (error) {
@@ -28,7 +28,7 @@ export const listChatSessions = async (req, res) => {
 export const getChatById = async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId } = req.auth();
+    const { userId } = await req.auth();
 
     const chat = await Chat.findOne({ chatId: id, userId });
     if (!chat) return res.status(404).json({ message: "Chat not found" });
@@ -41,7 +41,7 @@ export const getChatById = async (req, res) => {
 
 export const createChatSession = async (req, res) => {
   try {
-    const { userId } = req.auth();
+    const { userId } = await req.auth();
     const { title = "New Chat", searchType = "Doc Search" } = req.body || {};
 
     const chat = await Chat.create({
@@ -62,7 +62,7 @@ export const createChatSession = async (req, res) => {
 export const updateChatMeta = async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId } = req.auth();
+    const { userId } = await req.auth();
     const { title, searchType } = req.body || {};
 
     const updatePayload = {};
@@ -89,7 +89,7 @@ export const updateChatMeta = async (req, res) => {
 export const appendChatMessages = async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId } = req.auth();
+    const { userId } = await req.auth();
     const { messages = [], title, searchType } = req.body || {};
 
     const chat = await Chat.findOne({ chatId: id, userId });
@@ -127,7 +127,7 @@ export const appendChatMessages = async (req, res) => {
 export const deleteChatSession = async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId } = req.auth();
+    const { userId } = await req.auth();
 
     const deleted = await Chat.findOneAndDelete({ chatId: id, userId });
     if (!deleted) return res.status(404).json({ message: "Chat not found" });
