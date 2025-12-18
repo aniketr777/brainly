@@ -4,12 +4,11 @@ import { ReactMediaRecorder } from "react-media-recorder";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 
-
-function ChatBox({ onSendMessage, loading, setSearchType }) {
+function ChatBox({ onSendMessage, loading, setSearchType, searchType }) {
   const [message, setMessage] = useState("");
   const [audioLoading, setAudioLoading] = useState(false);
   const [open, setOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState("");
+  const [selectedType, setSelectedType] = useState(searchType || "");
   const textareaRef = useRef(null);
 
   const options = ["Web Search", "Doc Search"];
@@ -24,6 +23,10 @@ function ChatBox({ onSendMessage, loading, setSearchType }) {
       )}px`;
     }
   }, [message]);
+
+  useEffect(() => {
+    setSelectedType(searchType || "");
+  }, [searchType]);
 
   const handleSend = () => {
     if (!message.trim() || loading) return;

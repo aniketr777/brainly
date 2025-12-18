@@ -10,7 +10,7 @@ import WebSearchResults from "./WebSearchResults";
 import ChatBox from "./ChatBox";
 import axios from "axios";
 
-function ChatArea({ messages, loading, onSendMessage, setSearchType }) {
+function ChatArea({ messages, loading, onSendMessage, setSearchType, searchType }) {
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -65,6 +65,7 @@ function ChatArea({ messages, loading, onSendMessage, setSearchType }) {
             onSendMessage={onSendMessage}
             loading={loading}
             setSearchType={setSearchType}
+            searchType={searchType}
           />
         </>
       )}
