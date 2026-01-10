@@ -1,6 +1,6 @@
-# MultiRag - Intelligence Across All Your Documents 🚀
+# Brainly - Intelligence Across All Your Documents 🚀
 
-MultiRag is a powerful RAG (Retrieval-Augmented Generation) platform that allows users to upload diverse content types—YouTube videos, PDFs, Web articles, and raw text—and have intelligent, context-aware conversations with them.
+Brainly is a powerful RAG (Retrieval-Augmented Generation) platform that allows users to upload diverse content types—YouTube videos, PDFs, Web articles, and raw text—and have intelligent, context-aware conversations with them.
 
 Featuring a modern, premium interface and a robust dual-backend architecture, MultiRag utilizes state-of-the-art LLMs and vector search to provide accurate answers based on your specific data.
 
