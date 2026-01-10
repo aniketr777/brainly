@@ -2,24 +2,23 @@ import { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
-const CodeBlockSimple = ({ node, inline, className, children, ...props }) => {
+const AnswerMessage = ({ node, inline, className, children, ...props }) => {
   const [isCopied, setIsCopied] = useState(false);
   const match = /language-(\w+)/.exec(className || "");
   const language = match ? match[1] : "text";
 
   const handleCopy = () => {
-    const codeToCopy = String(children).replace(/\n$/, "");
+    const codeToCopy = String(children).replace(/\n+$/, "");
     navigator.clipboard.writeText(codeToCopy).then(() => {
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2500);
     });
   };
 
-  if (inline) {
-    return <code className="text-blue-300">{children}</code>;
-  }
+  // Handle inline code
+  if (inline) return <code className="text-blue-300">{children}</code>;
 
-  // Detect links and wrap them in <a>
+  // Detect links
   const highlightLinks = (text) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     return text.split(urlRegex).map((part, i) =>
@@ -40,13 +39,23 @@ const CodeBlockSimple = ({ node, inline, className, children, ...props }) => {
   };
 
   if (language === "text") {
+    const cleanedText = String(children)
+      // Remove accidental Markdown code fences
+      .replace(/```+/g, "")
+      // Limit excessive blank lines
+      .replace(/\n{3,}/g, "\n\n")
+      // Remove spaces before punctuation
+      .replace(/\s+([.,!?;:])/g, "$1")
+      .trim();
+
     return (
-      <pre className="whitespace-pre-wrap font-mono text-sm text-white bg-[#1e1f20] p-3 rounded-md">
-        <code>{highlightLinks(String(children))}</code>
+      <pre className="whitespace-pre-wrap leading-relaxed font-mono text-sm text-white bg-[#1e1f20] p-3 rounded-md">
+        <code>{highlightLinks(cleanedText)}</code>
       </pre>
     );
   }
 
+  // For code blocks
   return (
     <div className="relative my-4 rounded-lg bg-[#282c34] overflow-hidden">
       <div className="flex items-center justify-between px-4 py-1.5 bg-black rounded-t-lg">
@@ -66,11 +75,11 @@ const CodeBlockSimple = ({ node, inline, className, children, ...props }) => {
           PreTag="div"
           {...props}
         >
-          {String(children).replace(/\n$/, "")}
+          {String(children).replace(/\n+$/, "")}
         </SyntaxHighlighter>
       </div>
     </div>
   );
 };
 
-export default CodeBlockSimple;
+export default AnswerMessage;

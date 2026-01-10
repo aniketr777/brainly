@@ -135,6 +135,11 @@ export default function UploadDialog({ onUploadComplete }) {
       console.error(" Upload Error:", err);
       const errorMessage = err.response?.data?.message || "Upload failed ❌";
       onUploadComplete({ success: false, error: errorMessage });
+      setYoutubeLink("");
+      setWebsiteLink("");
+      setFile(null);
+      setTextTitle("");
+      setTextContent("");
     } finally {
       setUploading(false);
     }

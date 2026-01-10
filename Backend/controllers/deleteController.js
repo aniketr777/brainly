@@ -1,68 +1,102 @@
-import qdrantClient from "../lib/qdrantClient.js";
 import Youtube from "../model/youtube-collection.js";
 import Pdf from "../model/pdf-collection.js";
 import Text from "../model/text-collection.js";
 import Web from "../model/web-collection.js";
-import toast from "react-hot-toast";
 import deleteFromCloudinary from "../lib/deleteFromCloudinary.js";
-import { clerkClient } from "@clerk/express";
+import { decrementUsage } from "../utils/planManager.js";
+import { deleteVectorsByMongoId } from "../utils/qdrantHelper.js";
+import { ValidationError, NotFoundError } from "../utils/errors.js";
+import { isValidMongoId, isValidDocumentType } from "../utils/validation.js";
 
-// Decrement usage after deletion
-const decrementUsage = async (userId, plan, free_usage) => {
-  if (plan !== "premium" && free_usage > 0) {
-    await clerkClient.users.updateUser(userId, {
-      privateMetadata: { free_usage: free_usage - 1 },
-    });
-  }
+const COLLECTION_NAME = "store";
+
+/**
+ * Get model based on document type
+ */
+const getModelByType = (type) => {
+  const models = {
+    youtube: Youtube,
+    pdf: Pdf,
+    text: Text,
+    web: Web,
+  };
+  return models[type];
 };
 
+/**
+ * Delete document controller
+ */
 export const deleteController = async (req, res) => {
   try {
     const { type, mongo_id } = req.body;
     const { userId } = req.auth();
-    const { plan, free_usage } = req; 
-    const collectionName = "store";
+    const { plan, free_usage } = req;
 
-    if (!mongo_id) {
-      return res.status(400).json({ error: "Missing document ID" });
+    // Validation
+    if (!mongo_id || !isValidMongoId(mongo_id)) {
+      throw new ValidationError("Valid document ID is required");
     }
 
-    let Model;
-    if (type === "youtube") Model = Youtube;
-    else if (type === "pdf") Model = Pdf;
-    else if (type === "text") Model = Text;
-    else if(type=== "web") Model = Web;
-    else return res.status(400).json({ error: "Invalid type" });
+    if (!type || !isValidDocumentType(type)) {
+      throw new ValidationError("Valid document type is required");
+    }
 
+    // Get appropriate model
+    const Model = getModelByType(type);
+
+    // Find document
     const doc = await Model.findOne({ _id: mongo_id, user_id: userId });
-    if (!doc)
-      return res.status(404).json({ error: `${type} document not found` });
+    
+    if (!doc) {
+      throw new NotFoundError(`${type} document not found`);
+    }
 
+    // Delete from Cloudinary if PDF
     if (type === "pdf" && doc.public_id) {
-      await deleteFromCloudinary(doc.public_id);
+      try {
+        await deleteFromCloudinary(doc.public_id);
+        console.log(`✅ Deleted from Cloudinary: ${doc.public_id}`);
+      } catch (cloudinaryErr) {
+        console.error("Cloudinary delete failed:", cloudinaryErr);
+        // Continue with deletion even if Cloudinary fails
+      }
     }
 
+    // Delete from MongoDB
     await Model.deleteOne({ _id: mongo_id, user_id: userId });
+    console.log(`✅ Deleted from MongoDB: ${mongo_id}`);
 
+    // Delete from Qdrant with rollback on failure
     try {
-      await qdrantClient.delete(collectionName, {
-        filter: { must: [{ key: "mongoId", match: { value: mongo_id } }] },
-      });
+      await deleteVectorsByMongoId(COLLECTION_NAME, mongo_id);
+      console.log(`✅ Deleted from Qdrant: ${mongo_id}`);
     } catch (qdrantErr) {
-      console.error("❌ Qdrant delete failed, rolling back Mongo:", qdrantErr);
+      console.error("Qdrant delete failed, rolling back MongoDB:", qdrantErr);
+      
+      // Rollback: Restore document in MongoDB
       await Model.create(doc.toObject());
-      return res.status(500).json({
-        error: "Delete failed in Qdrant, Mongo rolled back",
-      });
+      
+      throw new Error("Delete failed in Qdrant, MongoDB rolled back");
     }
 
-    // Decrement free usage if user is free tier
+    // Decrement free usage if user is on free tier
     await decrementUsage(userId, plan, free_usage);
 
-    toast.success("Document Deleted Successfully");
-    res.json({ message: "✅ Document deleted successfully" });
+    res.json({ 
+      success: true,
+      message: "Document deleted successfully" 
+    });
+
   } catch (err) {
     console.error("Delete error:", err);
-    res.status(500).json({ error: "Internal Server Error" });
+    
+    if (!res.headersSent) {
+      const statusCode = err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      res.status(statusCode).json({ 
+        success: false,
+        error: message 
+      });
+    }
   }
 };

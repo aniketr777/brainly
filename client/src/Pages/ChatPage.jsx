@@ -59,9 +59,7 @@ const ChatPage = () => {
             results: data.citations || data.sources || [],
           },
         ]);
-        // console.log("Answer from API:",answer);
-        // console.log("Citations from API:", citations);
-        // --- END OF CORRECTION ---
+
       }
     } catch (err) {
       console.error("API call failed:", err);
@@ -82,7 +80,7 @@ const ChatPage = () => {
       <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex flex-1 flex-col relative">
-        {/* Topbar */}
+      
         <header className="flex items-center p-4 bg-[#131314] h-[60px] border-b border-zinc-700">
           {!isSidebarOpen && (
             <button

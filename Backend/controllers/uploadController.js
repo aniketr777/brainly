@@ -369,6 +369,8 @@ export const webUpload = async (req, res) => {
 
     // Fetch web content from Exa
     const exa = new Exa(process.env.EXA_API_KEY);
+    // const scraper = process.env.WEBSCRAPER_API_KEY;
+    
     const result = await exa.getContents([url], {
       text: true,
       context: true,
